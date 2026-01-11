@@ -157,10 +157,13 @@ async def avatar(i: discord.Interaction, u: discord.Member = None):
     u = u or i.user
     await i.response.send_message(embed=discord.Embed(color=discord.Color.red()).set_image(url=u.display_avatar.url))
 
-@bot.tree.command(name="id")
-async def id_cmd(i: discord.Interaction, u: discord.Member = None):
-    u = u or i.user
-    await i.response.send_message(f"🆔: `{u.id}`")
+@bot.tree.command(name="id", description="عرض المعرف الرقمي (ID) للعضو")
+@app_commands.describe(member="العضو الذي تريد معرفة الآيدي الخاص به")
+async def id_info(interaction: discord.Interaction, member: discord.Member = None):
+    target = member or interaction.user
+    
+    # رسالة واضحة تذكر لمن هذا الآيدي
+    await interaction.response.send_message(f"🆔 المعرف الخاص بـ **{target.display_name}** هو: `{target.id}`")
 
 @bot.tree.command(name="server")
 async def server(i: discord.Interaction):
