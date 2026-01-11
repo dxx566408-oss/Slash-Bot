@@ -260,9 +260,22 @@ async def name_info(interaction: discord.Interaction, member: discord.Member = N
     await interaction.response.send_message(embed=embed)
     
 @bot.tree.command(name="user", description="عرض معلومات الحساب وتاريخ الانضمام")
-@app_commands.describe(member="العضو الذي تريد رؤية معلوماته")
 async def user_info(interaction: discord.Interaction, member: discord.Member = None):
+    # نستخدم defer لإخبار ديسكورد أن البوت يفكر، ليعطينا وقتاً أطول للرد
+    await interaction.response.defer() 
+    
     target = member or interaction.user
+    created_ts = int(target.created_at.timestamp())
+    joined_ts = int(target.joined_at.timestamp())
+    
+    embed = discord.Embed(title=f"👤 معلومات العضو: {target.display_name}", color=0x000000)
+    embed.set_thumbnail(url=target.display_avatar.url)
+    
+    embed.add_field(name="🗓️ تاريخ إنشاء الحساب", value=f"<t:{created_ts}:D> (<t:{created_ts}:R>)", inline=False)
+    embed.add_field(name="📥 تاريخ دخول السيرفر", value=f"<t:{joined_ts}:D> (<t:{joined_ts}:R>)", inline=False)
+
+    # نستخدم followup لأننا قمنا بعمل defer في البداية
+    await interaction.followup.send(embed=embed)
     
     # تحويل التواريخ إلى طوابع زمنية لديسكورد
     # :D تعني التاريخ (يوم/شهر/سنة)
