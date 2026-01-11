@@ -169,30 +169,32 @@ async def id_info(interaction: discord.Interaction, member: discord.Member = Non
 async def server(i: discord.Interaction):
     await i.response.send_message(f"🏰: **{i.guild.name}** | الأعضاء: `{i.guild.member_count}`")
 
-@bot.tree.command(name="name", description="عرض اليوزر نيم والدسبلي نيم والنك نيم")
+@bot.tree.command(name="name", description="عرض جميع أسماء العضو")
 @app_commands.describe(member="العضو المراد فحص أسمائه")
 async def name_info(interaction: discord.Interaction, member: discord.Member = None):
     target = member or interaction.user
     
-    # 1. اليوزر نيم (الأصلي الفريد الذي يبدأ بـ @)
     username = target.name
-    
-    # 2. الاسم العالمي (الموجود في بروفايل الشخص لكل السيرفرات)
     global_name = target.global_name if target.global_name else "لا يوجد"
-    
-    # 3. النك نيم (اللقب الخاص بسيرفركم فقط)
     nick_name = target.nick
 
-    embed = discord.Embed(title="🏷️ قائمة الأسماء", color=0x000000)
+    # المنشن هنا في الـ description سيظهر بشكل صحيح (باللون الأزرق)
+    embed = discord.Embed(
+        title="🏷️ قائمة الأسماء", 
+        description=f"الأسماء الخاصة بالعضو: {target.mention}", 
+        color=0x000000
+    )
+    
     embed.add_field(name="Username", value=f"`{username}`", inline=False)
     embed.add_field(name="Global Name", value=f"`{global_name}`", inline=False)
     
-    # إذا كان لديه لقب (Nickname) مختلف في السيرفر نعرضه
     if nick_name:
         embed.add_field(name="Nickname", value=f"`{nick_name}`", inline=False)
     
+    # وضع صورة العضو الصغيرة بجانب الأسماء كشكل جمالي
+    embed.set_author(name=target.name, icon_url=target.display_avatar.url)
+    
     await interaction.response.send_message(embed=embed)
-
 @bot.tree.command(name="user", description="عرض معلومات الحساب وتاريخ الانضمام")
 @app_commands.describe(member="العضو الذي تريد رؤية معلوماته")
 async def user_info(interaction: discord.Interaction, member: discord.Member = None):
