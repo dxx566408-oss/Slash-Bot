@@ -174,20 +174,22 @@ async def server(i: discord.Interaction):
 async def name_info(interaction: discord.Interaction, member: discord.Member = None):
     target = member or interaction.user
     
-    # 1. اليوزر نيم (الأصلي)
+    # 1. اليوزر نيم (الأصلي الفريد الذي يبدأ بـ @)
     username = target.name
-    # 2. الدسبلي نيم (الاسم الظاهر في الملف الشخصي)
-    display_name = target.display_name
-    # 3. النك نيم (اللقب داخل السيرفر - قد يكون None)
+    
+    # 2. الاسم العالمي (الموجود في بروفايل الشخص لكل السيرفرات)
+    global_name = target.global_name if target.global_name else "لا يوجد"
+    
+    # 3. النك نيم (اللقب الخاص بسيرفركم فقط)
     nick_name = target.nick
 
     embed = discord.Embed(title="🏷️ قائمة الأسماء", color=0x000000)
-    embed.add_field(name="اليوزر نيم (Username)", value=f"`{username}`", inline=False)
-    embed.add_field(name="الدسبلي نيم (Display Name)", value=f"`{display_name}`", inline=False)
+    embed.add_field(name="Username", value=f"`{username}`", inline=False)
+    embed.add_field(name="Global Name", value=f"`{global_name}`", inline=False)
     
-    # التحقق: إذا كان النك نيم موجوداً (ليس None) قم بعرضه
+    # إذا كان لديه لقب (Nickname) مختلف في السيرفر نعرضه
     if nick_name:
-        embed.add_field(name="النك نيم (Nickname)", value=f"`{nick_name}`", inline=False)
+        embed.add_field(name="Nickname", value=f"`{nick_name}`", inline=False)
     
     await interaction.response.send_message(embed=embed)
 
