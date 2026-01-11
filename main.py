@@ -4,10 +4,12 @@ from discord.ext import commands
 import os
 import json
 import time
+import random
+from datetime import datetime, timedelta
 from flask import Flask
 from threading import Thread
 
-# --- إبقاء البوت مستيقظاً ---
+# --- تشغيل السيرفر لإبقاء البوت حياً ---
 app = Flask('')
 @app.route('/')
 def home(): return "Hermenya Bot is Online!"
@@ -16,7 +18,7 @@ def keep_alive():
     t = Thread(target=run)
     t.start()
 
-# --- إعدادات البوت ---
+# --- إعدادات البوت الأساسية ---
 class HermenyaBot(commands.Bot):
     def __init__(self):
         intents = discord.Intents.all()
@@ -35,31 +37,33 @@ class HermenyaBot(commands.Bot):
 
     async def setup_hook(self):
         await self.tree.sync()
-        print("✅ تم تحديث الأوامر وإزالة أمر النقاط")
+        print("✅ تم مزامنة جميع الأوامر الـ 11 بنجاح")
 
 bot = HermenyaBot()
 
+# --- دالة جلب البيانات (تبدأ من الصفر دائماً) ---
 def get_stats(user_id):
     uid = str(user_id)
     if uid not in bot.users_data:
         bot.users_data[uid] = {
-            "mrad": 0, "level": 1, "xp": 0, 
+            "mrad": 0, "level": 0, "xp": 0, 
             "msg_count": 0, "voice_seconds": 0, "rank": "عضو"
         }
     return bot.users_data[uid]
 
-# --- نظام كسب النقاط التلقائي ---
+# --- نظام الحسبة التلقائية (رسائل وصوت) ---
 @bot.event
 async def on_message(message):
     if message.author.bot: return
     stats = get_stats(message.author.id)
     stats["msg_count"] += 1
-    stats["xp"] += 5
-    stats["mrad"] += 1
-    if stats["xp"] >= (stats["level"] * 100):
-        stats["level"] += 1
-        stats["xp"] = 0
+    if stats["msg_count"] % 25 == 0:
+        stats["xp"] += 1
+        if stats["xp"] >= 20:
+            stats["level"] += 1
+            stats["xp"] = 0
     bot.save_data()
+    await bot.process_commands(message)
 
 @bot.event
 async def on_voice_state_update(member, before, after):
@@ -68,84 +72,112 @@ async def on_voice_state_update(member, before, after):
         bot.voice_times[member.id] = time.time()
     elif before.channel is not None and after.channel is None:
         if member.id in bot.voice_times:
-            duration = time.time() - bot.voice_times.pop(member.id)
+            duration = int(time.time() - bot.voice_times.pop(member.id))
             stats = get_stats(member.id)
-            stats["voice_seconds"] += int(duration)
-            stats["mrad"] += int(duration / 60) * 2
+            stats["voice_seconds"] += duration 
+            while stats["voice_seconds"] >= 300: # 5 دقائق تراكمية
+                stats["xp"] += 1
+                stats["voice_seconds"] -= 300
+                if stats["xp"] >= 20:
+                    stats["level"] += 1
+                    stats["xp"] = 0
             bot.save_data()
 
-# --- الأوامر المتبقية ---
+# --- 1. أمر مراد (عرض وتحويل) ---
+@bot.tree.command(name="mrad", description="عرض الرصيد أو تحويل عملة مراد")
+async def mrad(interaction: discord.Interaction, user: discord.Member = None, amount: int = None):
+    if amount is None:
+        target = user or interaction.user
+        s = get_stats(target.id)
+        return await interaction.response.send_message(embed=discord.Embed(description=f"💰 رصيد **{target.mention}** هو: `{s['mrad']}` مراد", color=discord.Color.red()))
 
-@bot.tree.command(name="profile", description="عرض بروفايل هرمينيا")
+    if user is None or user.id == interaction.user.id or user.bot:
+        return await interaction.response.send_message("❌ منشن شخصاً حقيقياً للتحويل.", ephemeral=True)
+    
+    sender_s = get_stats(interaction.user.id)
+    if amount <= 0 or sender_s["mrad"] < amount:
+        return await interaction.response.send_message("❌ رصيدك غير كافٍ!", ephemeral=True)
+
+    captcha = str(random.randint(1111, 9999))
+    await interaction.response.send_message(embed=discord.Embed(title="🛡️ تحقق", description=f"اكتب الرقم للتأكيد: **`{captcha}`**", color=discord.Color.orange()))
+
+    def check(m): return m.author == interaction.user and m.content == captcha and m.channel == interaction.channel
+    try:
+        await bot.wait_for('message', check=check, timeout=30.0)
+        receiver_s = get_stats(user.id)
+        sender_s["mrad"] -= amount
+        receiver_s["mrad"] += amount
+        bot.save_data()
+        await interaction.followup.send(f"✅ تم تحويل `{amount}` إلى {user.mention}")
+    except: await interaction.followup.send("⚠️ ألغيت العملية.")
+
+# --- 2. أمر المستوى ---
+@bot.tree.command(name="level", description="مستوى التفاعل في السيرفر")
+async def level(interaction: discord.Interaction, user: discord.Member = None):
+    user = user or interaction.user
+    s = get_stats(user.id)
+    embed = discord.Embed(title=f"📊 مستوى {user.display_name}", color=discord.Color.red())
+    embed.add_field(name="Lvl", value=f"`{s['level']}`")
+    embed.add_field(name="XP", value=f"`{s['xp']}/20`")
+    await interaction.response.send_message(embed=embed)
+
+# --- 3. أمر البروفايل العالمي ---
+@bot.tree.command(name="profile", description="البطاقة العالمية للعضو")
 async def profile(interaction: discord.Interaction, user: discord.Member = None):
     user = user or interaction.user
     s = get_stats(user.id)
-    embed = discord.Embed(title=f"👤 ملف {user.display_name}", color=discord.Color.red())
-    embed.set_thumbnail(url=user.display_avatar.url)
-    embed.add_field(name="💰 مراد", value=f"`{s['mrad']}`")
-    embed.add_field(name="🏆 رانك", value=f"`{s['rank']}`")
-    embed.add_field(name="📊 المستوى", value=f"Lvl {s['level']}")
-    embed.set_footer(text=f"طلب بواسطة {interaction.user.name}")
+    embed = discord.Embed(title=f"👤 بروفايل {user.name}", color=discord.Color.red())
+    embed.add_field(name="💰 إجمالي مراد", value=f"`{s['mrad']}`")
+    embed.add_field(name="🏆 الرتبة", value=f"`{s['rank']}`")
     await interaction.response.send_message(embed=embed)
 
-@bot.tree.command(name="avatar", description="عرض صورة الحساب")
-async def avatar(interaction: discord.Interaction, user: discord.Member = None):
-    user = user or interaction.user
-    embed = discord.Embed(title=f"صورة {user.display_name}", color=discord.Color.red())
-    embed.set_image(url=user.display_avatar.url)
-    embed.set_footer(text=f"طلب بواسطة {interaction.user.name}")
-    await interaction.response.send_message(embed=embed)
-
-@bot.tree.command(name="mrad", description="عرض رصيد المراد")
-async def mrad(interaction: discord.Interaction, user: discord.Member = None):
-    user = user or interaction.user
-    s = get_stats(user.id)
-    await interaction.response.send_message(f"💰 رصيد **{user.display_name}**: `{s['mrad']}` مراد.\n*طلب بواسطة {interaction.user.name}*")
-
-@bot.tree.command(name="top", description="قائمة العشرة الأوائل")
+# --- 4. أمر التوب ---
+@bot.tree.command(name="top", description="أغنى 10 في مراد")
 async def top(interaction: discord.Interaction):
     sorted_users = sorted(bot.users_data.items(), key=lambda x: x[1]['mrad'], reverse=True)[:10]
-    desc = ""
-    for i, (uid, data) in enumerate(sorted_users, 1):
-        u = bot.get_user(int(uid))
-        name = u.name if u else f"User {uid}"
-        desc += f"**#{i}** | {name} - `{data['mrad']} mrad`\n"
-    embed = discord.Embed(title="🏆 توب هرمينيا", description=desc, color=discord.Color.gold())
-    embed.set_footer(text=f"طلب بواسطة {interaction.user.name}")
-    await interaction.response.send_message(embed=embed)
+    desc = "\n".join([f"**#{i+1}** | <@{uid}> - `{d['mrad']}`" for i, (uid, d) in enumerate(sorted_users)])
+    await interaction.response.send_message(embed=discord.Embed(title="🏆 توب مراد", description=desc or "لا بيانات", color=discord.Color.red()))
 
-@bot.tree.command(name="user", description="تواريخ الدخول")
-async def user_info(interaction: discord.Interaction, user: discord.Member = None):
-    user = user or interaction.user
-    embed = discord.Embed(title=f"📅 تواريخ {user.name}", color=discord.Color.red())
-    embed.add_field(name="تاريخ دخول الديسكورد", value=f"<t:{int(user.created_at.timestamp())}:D>")
-    embed.add_field(name="تاريخ دخول السيرفر", value=f"<t:{int(user.joined_at.timestamp())}:D>")
-    embed.set_footer(text=f"طلب بواسطة {interaction.user.name}")
-    await interaction.response.send_message(embed=embed)
+# --- 5. النرد ---
+@bot.tree.command(name="dice", description="لعبة النرد")
+async def dice(interaction: discord.Interaction, bet: int = None):
+    s = get_stats(interaction.user.id)
+    if bet and (bet <= 0 or s["mrad"] < bet): return await interaction.response.send_message("❌ رصيد غير كافٍ", ephemeral=True)
+    res = random.randint(1, 6)
+    msg = f"🎲 النرد: **{res}**"
+    if bet:
+        if res >= 4: s["mrad"] += bet; msg += f"\n🎉 ربحت `{bet}`"
+        else: s["mrad"] -= bet; msg += f"\n❌ خسرت `{bet}`"
+        bot.save_data()
+    await interaction.response.send_message(msg)
 
-@bot.tree.command(name="id", description="عرض معرف العضو")
-async def id_cmd(interaction: discord.Interaction, user: discord.Member = None):
-    user = user or interaction.user
-    await interaction.response.send_message(f"🆔 معرف {user.display_name}: `{user.id}`\n*طلب بواسطة {interaction.user.name}*")
+# --- أوامر المعلومات (6-11) ---
+@bot.tree.command(name="avatar")
+async def avatar(i: discord.Interaction, u: discord.Member = None):
+    u = u or i.user
+    await i.response.send_message(embed=discord.Embed(color=discord.Color.red()).set_image(url=u.display_avatar.url))
 
-@bot.tree.command(name="server", description="بيانات السيرفر")
-async def server(interaction: discord.Interaction):
-    g = interaction.guild
-    embed = discord.Embed(title=f"🏰 {g.name}", color=discord.Color.red())
-    embed.add_field(name="عدد الأعضاء", value=f"{g.member_count}")
-    embed.set_footer(text=f"طلب بواسطة {interaction.user.name}")
-    await interaction.response.send_message(embed=embed)
+@bot.tree.command(name="id")
+async def id_cmd(i: discord.Interaction, u: discord.Member = None):
+    u = u or i.user
+    await i.response.send_message(f"🆔: `{u.id}`")
 
-@bot.tree.command(name="name", description="عرض أسماء العضو")
-async def name_cmd(interaction: discord.Interaction, user: discord.Member = None):
-    user = user or interaction.user
-    await interaction.response.send_message(
-        f"🏷️ **الأسماء لـ {user.mention}:**\n"
-        f"• Username: `{user.name}`\n"
-        f"• Display Name: `{user.display_name}`\n"
-        f"• Nickname: `{user.nick or 'لا يوجد'}`\n"
-        f"*طلب بواسطة {interaction.user.name}*"
-    )
+@bot.tree.command(name="server")
+async def server(i: discord.Interaction):
+    await i.response.send_message(f"🏰: **{i.guild.name}** | الأعضاء: `{i.guild.member_count}`")
+
+@bot.tree.command(name="name")
+async def name_cmd(i: discord.Interaction, u: discord.Member = None):
+    u = u or i.user
+    await i.response.send_message(f"🏷️ الاسم: `{u.name}` | العرض: `{u.display_name}`")
+
+@bot.tree.command(name="user")
+async def user_info(i: discord.Interaction, u: discord.Member = None):
+    u = u or i.user
+    await i.response.send_message(f"📅 انضم للسيرفر: <t:{int(u.joined_at.timestamp())}:R>")
+
+@bot.command()
+async def ping(ctx): await ctx.send(f"🏓 Pong! `{round(bot.latency * 1000)}ms`")
 
 keep_alive()
 bot.run(os.getenv("DISCORD_TOKEN"))
