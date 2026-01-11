@@ -166,15 +166,55 @@ async def id_cmd(i: discord.Interaction, u: discord.Member = None):
 async def server(i: discord.Interaction):
     await i.response.send_message(f"🏰: **{i.guild.name}** | الأعضاء: `{i.guild.member_count}`")
 
-@bot.tree.command(name="name")
-async def name_cmd(i: discord.Interaction, u: discord.Member = None):
-    u = u or i.user
-    await i.response.send_message(f"🏷️ الاسم: `{u.name}` | العرض: `{u.display_name}`")
+@bot.tree.command(name="name", description="عرض اليوزر نيم والدسبلي نيم والنك نيم")
+@app_commands.describe(member="العضو المراد فحص أسمائه")
+async def name_info(interaction: discord.Interaction, member: discord.Member = None):
+    target = member or interaction.user
+    
+    # 1. اليوزر نيم (الأصلي)
+    username = target.name
+    # 2. الدسبلي نيم (الاسم الظاهر في الملف الشخصي)
+    display_name = target.display_name
+    # 3. النك نيم (اللقب داخل السيرفر - قد يكون None)
+    nick_name = target.nick
 
-@bot.tree.command(name="user")
-async def user_info(i: discord.Interaction, u: discord.Member = None):
-    u = u or i.user
-    await i.response.send_message(f"📅 انضم للسيرفر: <t:{int(u.joined_at.timestamp())}:R>")
+    embed = discord.Embed(title="🏷️ قائمة الأسماء", color=0x000000)
+    embed.add_field(name="اليوزر نيم (Username)", value=f"`{username}`", inline=False)
+    embed.add_field(name="الدسبلي نيم (Display Name)", value=f"`{display_name}`", inline=False)
+    
+    # التحقق: إذا كان النك نيم موجوداً (ليس None) قم بعرضه
+    if nick_name:
+        embed.add_field(name="النك نيم (Nickname)", value=f"`{nick_name}`", inline=False)
+    
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="user", description="عرض معلومات الحساب وتاريخ الانضمام")
+@app_commands.describe(member="العضو الذي تريد رؤية معلوماته")
+async def user_info(interaction: discord.Interaction, member: discord.Member = None):
+    target = member or interaction.user
+    
+    # تحويل التواريخ إلى طوابع زمنية لديسكورد
+    # :D تعني التاريخ (يوم/شهر/سنة)
+    # :R تعني الوقت النسبي (قبل كم)
+    created_ts = int(target.created_at.timestamp())
+    joined_ts = int(target.joined_at.timestamp())
+    
+    embed = discord.Embed(title=f"👤 معلومات العضو: {target.display_name}", color=0x000000) # لون أسود فخم
+    embed.set_thumbnail(url=target.display_avatar.url)
+    
+    embed.add_field(
+        name="🗓️ تاريخ إنشاء الحساب", 
+        value=f"أنشأ حسابه في: <t:{created_ts}:D>\nأي قبل: **<t:{created_ts}:R>**", 
+        inline=False
+    )
+    
+    embed.add_field(
+        name="📥 تاريخ دخول السيرفر", 
+        value=f"دخل السيرفر في: <t:{joined_ts}:D>\nأي قبل: **<t:{joined_ts}:R>**", 
+        inline=False
+    )
+
+    await interaction.response.send_message(embed=embed)
 
 @bot.command()
 async def ping(ctx): await ctx.send(f"🏓 Pong! `{round(bot.latency * 1000)}ms`")
