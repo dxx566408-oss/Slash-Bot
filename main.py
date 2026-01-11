@@ -118,8 +118,8 @@ async def top(interaction: discord.Interaction):
 async def user_info(interaction: discord.Interaction, user: discord.Member = None):
     user = user or interaction.user
     embed = discord.Embed(title=f"📅 تواريخ {user.name}", color=discord.Color.red())
-    embed.add_field(name="الديسكورد", value=f"<t:{int(user.created_at.timestamp())}:D>")
-    embed.add_field(name="السيرفر", value=f"<t:{int(user.joined_at.timestamp())}:D>")
+    embed.add_field(name="تاريخ دخول الديسكورد", value=f"<t:{int(user.created_at.timestamp())}:D>")
+    embed.add_field(name="تاريخ دخول السيرفر", value=f"<t:{int(user.joined_at.timestamp())}:D>")
     embed.set_footer(text=f"طلب بواسطة {interaction.user.name}")
     await interaction.response.send_message(embed=embed)
 
@@ -132,7 +132,7 @@ async def id_cmd(interaction: discord.Interaction, user: discord.Member = None):
 async def server(interaction: discord.Interaction):
     g = interaction.guild
     embed = discord.Embed(title=f"🏰 {g.name}", color=discord.Color.red())
-    embed.add_field(name="الأعضاء", value=f"{g.member_count}")
+    embed.add_field(name="عدد الأعضاء", value=f"{g.member_count}")
     embed.set_footer(text=f"طلب بواسطة {interaction.user.name}")
     await interaction.response.send_message(embed=embed)
 
