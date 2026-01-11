@@ -165,36 +165,71 @@ async def id_info(interaction: discord.Interaction, member: discord.Member = Non
     # رسالة واضحة تذكر لمن هذا الآيدي
     await interaction.response.send_message(f"🆔 المعرف الخاص بـ **{target.display_name}** هو: `{target.id}`")
 
-@bot.tree.command(name="server")
-async def server(i: discord.Interaction):
-    await i.response.send_message(f"🏰: **{i.guild.name}** | الأعضاء: `{i.guild.member_count}`")
+@bot.tree.command(name="server", description="عرض معلومات السيرفر بالتفصيل")
+async def server_info(interaction: discord.Interaction):
+    guild = interaction.guild
+    
+    # حساب عدد الأعضاء (بدون البوتات) وعدد البوتات فقط
+    total_members = guild.member_count
+    bot_count = len([m for m in guild.members if m.bot])
+    human_count = total_members - bot_count
+    
+    # تاريخ إنشاء السيرفر
+    created_ts = int(guild.created_at.timestamp())
+    
+    embed = discord.Embed(title=f"🏡 معلومات سيرفر: {guild.name}", color=0xff0000)
+    
+    # إضافة صورة السيرفر إذا وجدت
+    if guild.icon:
+        embed.set_thumbnail(url=guild.icon.url)
+    
+    embed.add_field(name="🆔 آيدي السيرفر", value=f"`{guild.id}`", inline=False)
+    
+    embed.add_field(
+        name="🗓️ تاريخ الإنشاء", 
+        value=f"أنشئ في: <t:{created_ts}:D>\nأي قبل: **<t:{created_ts}:R>**", 
+        inline=False
+    )
+    
+    embed.add_field(name="👥 عدد الأعضاء (البشر)", value=f"`{human_count}` عضو", inline=True)
+    embed.add_field(name="🤖 عدد البوتات", value=f"`{bot_count}` بوت", inline=True)
+    
+    # إضافة صاحب السيرفر كمعلومة إضافية
+    embed.add_field(name="👑 صاحب السيرفر", value=f"{guild.owner.mention}", inline=False)
 
-@bot.tree.command(name="name", description="عرض جميع أسماء العضو")
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="name", description="عرض اليوزر نيم والدسبلي نيم والسيرفر نك نيم")
 @app_commands.describe(member="العضو المراد فحص أسمائه")
 async def name_info(interaction: discord.Interaction, member: discord.Member = None):
     target = member or interaction.user
     
-    username = target.name
-    global_name = target.global_name if target.global_name else "لا يوجد"
-    nick_name = target.nick
+    # 1. اليوزر نيم (الأصلي)
+    user_name = target.name
+    
+    # 2. الدسبلي نيم (الاسم العالمي في الحساب)
+    display_name = target.global_name if target.global_name else "لا يوجد"
+    
+    # 3. السيرفر نك نيم (اللقب داخل السيرفر فقط)
+    server_nick = target.nick
 
-    # المنشن هنا في الـ description سيظهر بشكل صحيح (باللون الأزرق)
     embed = discord.Embed(
         title="🏷️ قائمة الأسماء", 
         description=f"الأسماء الخاصة بالعضو: {target.mention}", 
         color=0x000000
     )
     
-    embed.add_field(name="Username", value=f"`{username}`", inline=False)
-    embed.add_field(name="Global Name", value=f"`{global_name}`", inline=False)
+    embed.add_field(name="User Name", value=f"`{user_name}`", inline=False)
+    embed.add_field(name="Display Name", value=f"`{display_name}`", inline=False)
     
-    if nick_name:
-        embed.add_field(name="Nickname", value=f"`{nick_name}`", inline=False)
+    # يظهر فقط إذا كان مغير اسمه داخل السيرفر
+    if server_nick:
+        embed.add_field(name="Server Nick Name", value=f"`{server_nick}`", inline=False)
     
-    # وضع صورة العضو الصغيرة بجانب الأسماء كشكل جمالي
     embed.set_author(name=target.name, icon_url=target.display_avatar.url)
     
     await interaction.response.send_message(embed=embed)
+    
 @bot.tree.command(name="user", description="عرض معلومات الحساب وتاريخ الانضمام")
 @app_commands.describe(member="العضو الذي تريد رؤية معلوماته")
 async def user_info(interaction: discord.Interaction, member: discord.Member = None):
