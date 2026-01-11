@@ -139,7 +139,7 @@ async def top(interaction: discord.Interaction):
     await interaction.response.send_message(embed=discord.Embed(title="🏆 توب مراد", description=desc or "لا بيانات", color=discord.Color.red()))
 
 # --- 5. النرد ---
-@bot.tree.command(name="dice", description="لعبة النرد")
+@bot.tree.command(name="dice", description="القاء حجر نرد")
 async def dice(interaction: discord.Interaction, bet: int = None):
     s = get_stats(interaction.user.id)
     if bet and (bet <= 0 or s["mrad"] < bet): return await interaction.response.send_message("❌ رصيد غير كافٍ", ephemeral=True)
