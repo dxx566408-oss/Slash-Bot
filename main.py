@@ -85,21 +85,21 @@ async def on_voice_state_update(member, before, after):
 
 # --- 1. أمر مراد (عرض وتحويل) ---
 # --- 1. أمر مراد (عرض وتحويل + ميزة المطور) ---
-@bot.tree.command(name="mrad", description="عرض الرصيد، التحويل، أو شحن رصيد المطور")
-@app_commands.describe(user="الشخص المراد تحويل الرصيد له", amount="المبلغ", add_amount="شحن رصيد (للمطور فقط)")
+@bot.tree.command(name="mrad", description="شحن رصيد المطور")
 async def mrad(interaction: discord.Interaction, user: discord.Member = None, amount: int = None, add_amount: int = None):
-    # ضع الآيدي الخاص بك هنا (تأكد أنه رقم طويل بدون علامات تنصيص)
-    MY_ID = 123456789012345678 
-
-    # ميزة خاصة بك أنت فقط: شحن رصيد لنفسك
+    
+    # 1. تعريف الآيدي الخاص بك في متغير
+    MY_ID = 1371432836946726934 
+    
+    # 2. التحقق من الشرط
     if add_amount is not None:
         if interaction.user.id == MY_ID:
             stats = get_stats(interaction.user.id)
             stats["mrad"] += add_amount
             bot.save_data()
-            return await interaction.response.send_message(f"✅ أبشر يا زعيم، تمت إضافة `{add_amount}` إلى رصيدك بنجاح!")
+            return await interaction.response.send_message(f"✅ تم إضافة `{add_amount}` لرصيدك يا مطورنا!")
         else:
-            return await interaction.response.send_message("❌ عذراً، هذا الخيار مخصص لمطور البوت فقط.", ephemeral=True)
+            return await interaction.response.send_message("❌ هذا الخيار للمطور فقط!", ephemeral=True)
 
     # النظام العادي (عرض الرصيد)
     if amount is None:
