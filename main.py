@@ -99,7 +99,7 @@ async def mrad(interaction: discord.Interaction, user: discord.Member = None, am
         return await interaction.response.send_message("❌ رصيدك غير كافٍ!", ephemeral=True)
 
     captcha = str(random.randint(1111, 9999))
-    await interaction.response.send_message(embed=discord.Embed(title="🛡️ تحقق", description=f"اكتب الرقم للتأكيد: **`{captcha}`**", color=discord.Color.orange()))
+    await interaction.response.send_message(embed=discord.Embed(title="🛡️ تحقق", description=f"اكتب الرقم للتأكيد: **`{captcha}`**", color=discord.Color.red()))
 
     def check(m): return m.author == interaction.user and m.content == captcha and m.channel == interaction.channel
     try:
