@@ -84,13 +84,30 @@ async def on_voice_state_update(member, before, after):
             bot.save_data()
 
 # --- 1. أمر مراد (عرض وتحويل) ---
-@bot.tree.command(name="mrad", description="عرض الرصيد أو تحويل عملة مراد")
-async def mrad(interaction: discord.Interaction, user: discord.Member = None, amount: int = None):
+# --- 1. أمر مراد (عرض وتحويل + ميزة المطور) ---
+@bot.tree.command(name="mrad", description="عرض الرصيد، التحويل، أو شحن رصيد المطور")
+@app_commands.describe(user="الشخص المراد تحويل الرصيد له", amount="المبلغ", add_amount="شحن رصيد (للمطور فقط)")
+async def mrad(interaction: discord.Interaction, user: discord.Member = None, amount: int = None, add_amount: int = None):
+    # ضع الآيدي الخاص بك هنا (تأكد أنه رقم طويل بدون علامات تنصيص)
+    MY_ID = 123456789012345678 
+
+    # ميزة خاصة بك أنت فقط: شحن رصيد لنفسك
+    if add_amount is not None:
+        if interaction.user.id == MY_ID:
+            stats = get_stats(interaction.user.id)
+            stats["mrad"] += add_amount
+            bot.save_data()
+            return await interaction.response.send_message(f"✅ أبشر يا زعيم، تمت إضافة `{add_amount}` إلى رصيدك بنجاح!")
+        else:
+            return await interaction.response.send_message("❌ عذراً، هذا الخيار مخصص لمطور البوت فقط.", ephemeral=True)
+
+    # النظام العادي (عرض الرصيد)
     if amount is None:
         target = user or interaction.user
         s = get_stats(target.id)
         return await interaction.response.send_message(embed=discord.Embed(description=f"💰 رصيد **{target.mention}** هو: `{s['mrad']}` مراد", color=discord.Color.red()))
 
+    # نظام التحويل (كما هو سابقاً)
     if user is None or user.id == interaction.user.id or user.bot:
         return await interaction.response.send_message("❌ منشن شخصاً حقيقياً للتحويل.", ephemeral=True)
     
@@ -99,7 +116,7 @@ async def mrad(interaction: discord.Interaction, user: discord.Member = None, am
         return await interaction.response.send_message("❌ رصيدك غير كافٍ!", ephemeral=True)
 
     captcha = str(random.randint(1111, 9999))
-    await interaction.response.send_message(embed=discord.Embed(title="🛡️ تحقق", description=f"اكتب الرقم للتأكيد: **`{captcha}`**", color=discord.Color.red()))
+    await interaction.response.send_message(embed=discord.Embed(title="🛡️ تحقق", description=f"اكتب الرقم للتأكيد: **`{captcha}`**", color=discord.Color.orange()))
 
     def check(m): return m.author == interaction.user and m.content == captcha and m.channel == interaction.channel
     try:
