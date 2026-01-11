@@ -35,7 +35,7 @@ class HermenyaBot(commands.Bot):
 
     async def setup_hook(self):
         await self.tree.sync()
-        print("✅ تم تحديث الأوامر وإزالة أمر النقاط")
+        print("✅ تم تحويل جميع الأوامر إلى نظام الإيمبد")
 
 bot = HermenyaBot()
 
@@ -74,7 +74,7 @@ async def on_voice_state_update(member, before, after):
             stats["mrad"] += int(duration / 60) * 2
             bot.save_data()
 
-# --- الأوامر المتبقية ---
+# --- الأوامر بنظام الإيمبد الكامل ---
 
 @bot.tree.command(name="profile", description="عرض بروفايل هرمينيا")
 async def profile(interaction: discord.Interaction, user: discord.Member = None):
@@ -82,25 +82,55 @@ async def profile(interaction: discord.Interaction, user: discord.Member = None)
     s = get_stats(user.id)
     embed = discord.Embed(title=f"👤 ملف {user.display_name}", color=discord.Color.red())
     embed.set_thumbnail(url=user.display_avatar.url)
-    embed.add_field(name="💰 مراد", value=f"`{s['mrad']}`")
-    embed.add_field(name="🏆 رانك", value=f"`{s['rank']}`")
-    embed.add_field(name="📊 المستوى", value=f"Lvl {s['level']}")
-    embed.set_footer(text=f"طلب بواسطة {interaction.user.name}")
-    await interaction.response.send_message(embed=embed)
-
-@bot.tree.command(name="avatar", description="عرض صورة الحساب")
-async def avatar(interaction: discord.Interaction, user: discord.Member = None):
-    user = user or interaction.user
-    embed = discord.Embed(title=f"صورة {user.display_name}", color=discord.Color.red())
-    embed.set_image(url=user.display_avatar.url)
-    embed.set_footer(text=f"طلب بواسطة {interaction.user.name}")
+    embed.add_field(name="💰 رصيد مراد", value=f"`{s['mrad']}`", inline=True)
+    embed.add_field(name="🏆 الرتبة", value=f"`{s['rank']}`", inline=True)
+    embed.add_field(name="📊 المستوى", value=f"`Lvl {s['level']}`", inline=True)
+    embed.set_footer(text=f"طلب بواسطة {interaction.user.name}", icon_url=interaction.user.display_avatar.url)
     await interaction.response.send_message(embed=embed)
 
 @bot.tree.command(name="mrad", description="عرض رصيد المراد")
 async def mrad(interaction: discord.Interaction, user: discord.Member = None):
     user = user or interaction.user
     s = get_stats(user.id)
-    await interaction.response.send_message(f"💰 رصيد **{user.display_name}**: `{s['mrad']}` مراد.\n*طلب بواسطة {interaction.user.name}*")
+    embed = discord.Embed(description=f"💰 رصيد **{user.mention}** الحالي هو: `{s['mrad']}` مراد", color=discord.Color.red())
+    embed.set_footer(text=f"طلب بواسطة {interaction.user.name}")
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="id", description="عرض معرف العضو")
+async def id_cmd(interaction: discord.Interaction, user: discord.Member = None):
+    user = user or interaction.user
+    embed = discord.Embed(description=f"🆔 معرف **{user.mention}** هو: `{user.id}`", color=discord.Color.red())
+    embed.set_footer(text=f"طلب بواسطة {interaction.user.name}")
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="name", description="عرض أسماء العضو")
+async def name_cmd(interaction: discord.Interaction, user: discord.Member = None):
+    user = user or interaction.user
+    embed = discord.Embed(title="🏷️ معلومات الأسماء", color=discord.Color.red())
+    embed.add_field(name="Username", value=f"`{user.name}`", inline=False)
+    embed.add_field(name="Display Name", value=f"`{user.display_name}`", inline=False)
+    embed.add_field(name="Nickname", value=f"`{user.nick or 'لا يوجد'}`", inline=False)
+    embed.set_footer(text=f"طلب بواسطة {interaction.user.name}")
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="server", description="بيانات السيرفر")
+async def server(interaction: discord.Interaction):
+    g = interaction.guild
+    embed = discord.Embed(title=f"🏰 معلومات سيرفر {g.name}", color=discord.Color.red())
+    if g.icon: embed.set_thumbnail(url=g.icon.url)
+    embed.add_field(name="تاريخ التأسيس", value=f"<t:{int(g.created_at.timestamp())}:D>", inline=True)
+    embed.add_field(name="عدد الأعضاء", value=f"`{g.member_count}`", inline=True)
+    embed.add_field(name="المكان", value=f"`{g.preferred_locale}`", inline=True)
+    embed.set_footer(text=f"طلب بواسطة {interaction.user.name}")
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="avatar", description="عرض صورة الحساب")
+async def avatar(interaction: discord.Interaction, user: discord.Member = None):
+    user = user or interaction.user
+    embed = discord.Embed(title=f"🖼️ صورة {user.display_name}", color=discord.Color.red())
+    embed.set_image(url=user.display_avatar.url)
+    embed.set_footer(text=f"طلب بواسطة {interaction.user.name}")
+    await interaction.response.send_message(embed=embed)
 
 @bot.tree.command(name="top", description="قائمة العشرة الأوائل")
 async def top(interaction: discord.Interaction):
@@ -110,42 +140,19 @@ async def top(interaction: discord.Interaction):
         u = bot.get_user(int(uid))
         name = u.name if u else f"User {uid}"
         desc += f"**#{i}** | {name} - `{data['mrad']} mrad`\n"
-    embed = discord.Embed(title="🏆 توب هرمينيا", description=desc, color=discord.Color.gold())
+    
+    embed = discord.Embed(title="🏆 قائمة متصدري هرمينيا", description=desc or "لا توجد بيانات بعد", color=discord.Color.red())
     embed.set_footer(text=f"طلب بواسطة {interaction.user.name}")
     await interaction.response.send_message(embed=embed)
 
 @bot.tree.command(name="user", description="تواريخ الدخول")
 async def user_info(interaction: discord.Interaction, user: discord.Member = None):
     user = user or interaction.user
-    embed = discord.Embed(title=f"📅 تواريخ {user.name}", color=discord.Color.red())
-    embed.add_field(name="تاريخ دخول الديسكورد", value=f"<t:{int(user.created_at.timestamp())}:D>")
-    embed.add_field(name="تاريخ دخول السيرفر", value=f"<t:{int(user.joined_at.timestamp())}:D>")
+    embed = discord.Embed(title=f"📅 معلومات تواريخ {user.display_name}", color=discord.Color.red())
+    embed.add_field(name="انضمام للديسكورد", value=f"<t:{int(user.created_at.timestamp())}:D> (<t:{int(user.created_at.timestamp())}:R>)", inline=False)
+    embed.add_field(name="انضمام للسيرفر", value=f"<t:{int(user.joined_at.timestamp())}:D> (<t:{int(user.joined_at.timestamp())}:R>)", inline=False)
     embed.set_footer(text=f"طلب بواسطة {interaction.user.name}")
     await interaction.response.send_message(embed=embed)
-
-@bot.tree.command(name="id", description="عرض معرف العضو")
-async def id_cmd(interaction: discord.Interaction, user: discord.Member = None):
-    user = user or interaction.user
-    await interaction.response.send_message(f"🆔 معرف {user.display_name}: `{user.id}`\n*طلب بواسطة {interaction.user.name}*")
-
-@bot.tree.command(name="server", description="بيانات السيرفر")
-async def server(interaction: discord.Interaction):
-    g = interaction.guild
-    embed = discord.Embed(title=f"🏰 {g.name}", color=discord.Color.red())
-    embed.add_field(name="عدد الأعضاء", value=f"{g.member_count}")
-    embed.set_footer(text=f"طلب بواسطة {interaction.user.name}")
-    await interaction.response.send_message(embed=embed)
-
-@bot.tree.command(name="name", description="عرض أسماء العضو")
-async def name_cmd(interaction: discord.Interaction, user: discord.Member = None):
-    user = user or interaction.user
-    await interaction.response.send_message(
-        f"🏷️ **الأسماء لـ {user.mention}:**\n"
-        f"• Username: `{user.name}`\n"
-        f"• Display Name: `{user.display_name}`\n"
-        f"• Nickname: `{user.nick or 'لا يوجد'}`\n"
-        f"*طلب بواسطة {interaction.user.name}*"
-    )
 
 keep_alive()
 bot.run(os.getenv("DISCORD_TOKEN"))
