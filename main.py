@@ -107,26 +107,44 @@ async def mrad(interaction: discord.Interaction, user: discord.Member = None, am
         s = get_stats(target.id)
         return await interaction.response.send_message(embed=discord.Embed(description=f"💰 رصيد **{target.mention}** هو: `{s['mrad']}` مراد", color=discord.Color.red()))
 
-    # نظام التحويل (كما هو سابقاً)
-    if user is None or user.id == interaction.user.id or user.bot:
-        return await interaction.response.send_message("❌ منشن شخصاً حقيقياً للتحويل.", ephemeral=True)
-    
-    sender_s = get_stats(interaction.user.id)
-    if amount <= 0 or sender_s["mrad"] < amount:
-        return await interaction.response.send_message("❌ رصيدك غير كافٍ!", ephemeral=True)
-
+    # --- نظام التحويل مع حذف رسالة التحقق ---
     captcha = str(random.randint(1111, 9999))
-    await interaction.response.send_message(embed=discord.Embed(title="🛡️ تحقق", description=f"اكتب الرقم للتأكيد: **`{captcha}`**", color=discord.Color.orange()))
+    # نخزن الرسالة في متغير لكي نستطيع حذفها لاحقاً
+    captcha_msg = await interaction.response.send_message(
+        embed=discord.Embed(
+            title="🛡️ تحقق", 
+            description=f"اكتب الرقم للتأكيد: **`{captcha}`**", 
+            color=discord.Color.orange()
+        )
+    )
 
-    def check(m): return m.author == interaction.user and m.content == captcha and m.channel == interaction.channel
+    def check(m): 
+        return m.author == interaction.user and m.channel == interaction.channel
+        
     try:
-        await bot.wait_for('message', check=check, timeout=30.0)
-        receiver_s = get_stats(user.id)
-        sender_s["mrad"] -= amount
-        receiver_s["mrad"] += amount
-        bot.save_data()
-        await interaction.followup.send(f"✅ تم تحويل `{amount}` إلى {user.mention}")
-    except: await interaction.followup.send("⚠️ ألغيت العملية.")
+        # ننتظر رد المستخدم
+        msg_res = await bot.wait_for('message', check=check, timeout=30.0)
+        
+        if msg_res.content == captcha:
+            # 1. حذف رسالة المستخدم التي تحتوي على الرقم
+            await msg_res.delete() 
+            
+            # 2. حذف رسالة الـ Embed الأصلية الخاصة بالبوت
+            await interaction.delete_original_response() 
+            
+            receiver_s = get_stats(user.id)
+            sender_s["mrad"] -= amount
+            receiver_s["mrad"] += amount
+            bot.save_data()
+            
+            await interaction.followup.send(f"✅ تم تحويل `{amount}` إلى {user.mention}")
+        else:
+            # إذا كتب رقم خطأ، نحذف رسالته أيضاً ونخبره
+            await msg_res.delete()
+            await interaction.followup.send("❌ الرقم غير صحيح، تم إلغاء العملية.", ephemeral=True)
+            
+    except TimeoutError:
+        await interaction.followup.send("⚠️ انتهى الوقت، تم إلغاء العملية.")
 
 # --- 2. أمر المستوى ---
 @bot.tree.command(name="level", description="مستوى التفاعل في السيرفر")
