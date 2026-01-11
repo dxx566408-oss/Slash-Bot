@@ -152,10 +152,39 @@ async def dice(interaction: discord.Interaction, bet: int = None):
     await interaction.response.send_message(msg)
 
 # --- أوامر المعلومات (6-11) ---
-@bot.tree.command(name="avatar")
-async def avatar(i: discord.Interaction, u: discord.Member = None):
-    u = u or i.user
-    await i.response.send_message(embed=discord.Embed(color=discord.Color.red()).set_image(url=u.display_avatar.url))
+@bot.tree.command(name="avatar", description="عرض صورة الحساب الشخصية")
+@app_commands.describe(member="العضو الذي تريد رؤية صورته")
+async def avatar(interaction: discord.Interaction, member: discord.Member = None):
+    # إذا لم يتم اختيار عضو، يتم عرض صورة الشخص الذي نفذ الأمر
+    target = member or interaction.user
+    
+    # الحصول على رابط الصورة (الحجم 1024 لضمان جودة عالية)
+    avatar_url = target.display_avatar.with_size(1024).url
+    
+    # إنشاء الـ Embed بنفس التنسيق المطلوب
+    embed = discord.Embed(
+        title="Avatar Link",
+        url=avatar_url, # الضغط على العنوان يفتح الرابط
+        description=f"🌐 **Global & Server Avatar**",
+        color=0x2b2d31 # لون رمادي داكن مشابه للديسكورد
+    )
+    
+    # وضع الصورة الكبيرة في المنتصف
+    embed.set_image(url=avatar_url)
+    
+    # وضع الصورة المصغرة في الأعلى
+    embed.set_thumbnail(url=avatar_url)
+    
+    # وضع اسم العضو في الأعلى
+    embed.set_author(name=target.name, icon_url=avatar_url)
+    
+    # التذييل: يظهر اسم الشخص الذي طلب الأمر
+    embed.set_footer(
+        text=f"بطلب من {interaction.user.name}", 
+        icon_url=interaction.user.display_avatar.url
+    )
+    
+    await interaction.response.send_message(embed=embed)
 
 @bot.tree.command(name="id", description="عرض المعرف الرقمي (ID) للعضو")
 @app_commands.describe(member="العضو الذي تريد معرفة الآيدي الخاص به")
