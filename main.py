@@ -88,7 +88,8 @@ async def globalprofile(interaction: discord.Interaction, member: discord.Member
     embed.add_field(name="مجموع الرسائل الكلي", value=f"📧 `{stats['msg_count']}`", inline=False)
     h = stats['voice_seconds'] // 3600
     m = (stats['voice_seconds'] % 3600) // 60
-    embed.add_field(name="إجمالي وقت الفويس", value=f"🎙️ `{h}` ساعة و `{m}` دقيقة", inline=False)
+    s = stats['voice_seconds'] % 60
+    embed.add_field(name="إجمالي وقت الفويس", value=f"🎙️ `{h}` ساعة و `{m}` دقيقة و `{s}` ثانية", inline=False)
     await interaction.response.send_message(embed=embed)
 
 def get_stats(user_id, guild_id=None):
