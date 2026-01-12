@@ -37,11 +37,11 @@ class HermenyaBot(commands.Bot):
 
     async def setup_hook(self):
         await self.tree.sync()
-        print("✅ تم مزامنة جميع الأوامر الـ 11 بنجاح")
+        print("✅ تم مزامنة جميع الأوامر بنجاح")
 
 bot = HermenyaBot()
 
-# --- دالة جلب البيانات (تبدأ من الصفر دائماً) ---
+# --- دالة جلب البيانات ---
 def get_stats(user_id):
     uid = str(user_id)
     if uid not in bot.users_data:
@@ -51,7 +51,7 @@ def get_stats(user_id):
         }
     return bot.users_data[uid]
 
-# --- نظام الحسبة التلقائية (رسائل وصوت) ---
+# --- نظام الحسبة التلقائية ---
 @bot.event
 async def on_message(message):
     if message.author.bot: return
@@ -75,7 +75,7 @@ async def on_voice_state_update(member, before, after):
             duration = int(time.time() - bot.voice_times.pop(member.id))
             stats = get_stats(member.id)
             stats["voice_seconds"] += duration 
-            while stats["voice_seconds"] >= 300: # 5 دقائق تراكمية
+            while stats["voice_seconds"] >= 300:
                 stats["xp"] += 1
                 stats["voice_seconds"] -= 300
                 if stats["xp"] >= 20:
@@ -83,15 +83,11 @@ async def on_voice_state_update(member, before, after):
                     stats["xp"] = 0
             bot.save_data()
 
-# --- 1. أمر مراد (عرض وتحويل) ---
-# --- 1. أمر مراد (عرض وتحويل + ميزة المطور) ---
-@bot.tree.command(name="mrad", description="شحن رصيد المطور")
+# --- 1. أمر مراد (أحمر فاقع) ---
+@bot.tree.command(name="mrad", description="عرض وتحويل رصيد مراد")
 async def mrad(interaction: discord.Interaction, user: discord.Member = None, amount: int = None, add_amount: int = None):
-    
-    # 1. تعريف الآيدي الخاص بك في متغير
     MY_ID = 1371432836946726934 
     
-    # 2. التحقق من الشرط
     if add_amount is not None:
         if interaction.user.id == MY_ID:
             stats = get_stats(interaction.user.id)
@@ -101,52 +97,45 @@ async def mrad(interaction: discord.Interaction, user: discord.Member = None, am
         else:
             return await interaction.response.send_message("❌ هذا الخيار للمطور فقط!", ephemeral=True)
 
-    # النظام العادي (عرض الرصيد)
     if amount is None:
         target = user or interaction.user
         s = get_stats(target.id)
-        return await interaction.response.send_message(embed=discord.Embed(description=f"💰 رصيد **{target.mention}** هو: `{s['mrad']}` مراد", color=discord.Color.red()))
+        return await interaction.response.send_message(embed=discord.Embed(description=f"💰 رصيد **{target.mention}** هو: `{s['mrad']}` مراد", color=0xff0000))
 
-    # --- نظام التحويل مع حذف رسالة التحقق ---
+    # نظام التحويل
+    sender_s = get_stats(interaction.user.id)
+    if amount <= 0 or sender_s["mrad"] < amount:
+        return await interaction.response.send_message("❌ رصيدك لا يكفي للتحويل!", ephemeral=True)
+
     captcha = str(random.randint(1111, 9999))
-    # نخزن الرسالة في متغير لكي نستطيع حذفها لاحقاً
-    captcha_msg = await interaction.response.send_message(
+    await interaction.response.send_message(
         embed=discord.Embed(
             title="🛡️ تحقق", 
             description=f"اكتب الرقم للتأكيد: **`{captcha}`**", 
-            color=discord.Color.orange()
+            color=0xff0000
         )
     )
 
-    def check(m): 
-        return m.author == interaction.user and m.channel == interaction.channel
-        
+    def check(m): return m.author == interaction.user and m.channel == interaction.channel
     try:
-        # ننتظر رد المستخدم
         msg_res = await bot.wait_for('message', check=check, timeout=30.0)
-        
         if msg_res.content == captcha:
-            # 1. حذف رسالة المستخدم التي تحتوي على الرقم
-            await msg_res.delete() 
-            
-            # 2. حذف رسالة الـ Embed الأصلية الخاصة بالبوت
-            await interaction.delete_original_response() 
+            await msg_res.delete()
+            await interaction.delete_original_response()
             
             receiver_s = get_stats(user.id)
             sender_s["mrad"] -= amount
             receiver_s["mrad"] += amount
             bot.save_data()
-            
             await interaction.followup.send(f"✅ تم تحويل `{amount}` إلى {user.mention}")
         else:
-            # إذا كتب رقم خطأ، نحذف رسالته أيضاً ونخبره
             await msg_res.delete()
             await interaction.followup.send("❌ الرقم غير صحيح، تم إلغاء العملية.", ephemeral=True)
-            
     except TimeoutError:
         await interaction.followup.send("⚠️ انتهى الوقت، تم إلغاء العملية.")
 
-@bot.tree.command(name="dice", description="القاء حجر نرد")
+# --- 2. أمر النرد (أحمر فاقع) ---
+@bot.tree.command(name="dice", description="إلقاء حجر نرد")
 async def dice(interaction: discord.Interaction, bet: int = None):
     s = get_stats(interaction.user.id)
     if bet and (bet <= 0 or s["mrad"] < bet): return await interaction.response.send_message("❌ رصيد غير كافٍ", ephemeral=True)
@@ -156,192 +145,60 @@ async def dice(interaction: discord.Interaction, bet: int = None):
         if res >= 4: s["mrad"] += bet; msg += f"\n🎉 ربحت `{bet}`"
         else: s["mrad"] -= bet; msg += f"\n❌ خسرت `{bet}`"
         bot.save_data()
-    await interaction.response.send_message(msg)
+    await interaction.response.send_message(embed=discord.Embed(description=msg, color=0xff0000))
 
-@bot.tree.command(name="avatar", description="عرض صورة الحساب الشخصية")
-@app_commands.describe(member="العضو الذي تريد رؤية صورته")
+# --- 3. أمر الأفاتار (أحمر فاقع) ---
+@bot.tree.command(name="avatar", description="عرض صورة الحساب")
 async def avatar(interaction: discord.Interaction, member: discord.Member = None):
-    # إذا لم يتم اختيار عضو، يتم عرض صورة الشخص الذي نفذ الأمر
     target = member or interaction.user
-    
-    # الحصول على رابط الصورة (الحجم 1024 لضمان جودة عالية)
     avatar_url = target.display_avatar.with_size(1024).url
-    
-    # إنشاء الـ Embed بنفس التنسيق المطلوب
-    embed = discord.Embed(
-        title="Avatar Link",
-        url=avatar_url, # الضغط على العنوان يفتح الرابط
-        description=f"🌐 **Global & Server Avatar**",
-        color=0x2b2d31 # لون رمادي داكن مشابه للديسكورد
-    )
-    
-    # وضع الصورة الكبيرة في المنتصف
+    embed = discord.Embed(title=f"صورة {target.name}", url=avatar_url, color=0xff0000)
     embed.set_image(url=avatar_url)
-    
-    # وضع الصورة المصغرة في الأعلى
-    embed.set_thumbnail(url=avatar_url)
-    
-    # وضع اسم العضو في الأعلى
-    embed.set_author(name=target.name, icon_url=avatar_url)
-    
-    # التذييل: يظهر اسم الشخص الذي طلب الأمر
-    embed.set_footer(
-        text=f"بطلب من {interaction.user.name}", 
-        icon_url=interaction.user.display_avatar.url
-    )
-    
     await interaction.response.send_message(embed=embed)
 
-@bot.tree.command(name="id", description="عرض المعرف الرقمي (ID) للعضو")
-@app_commands.describe(member="العضو الذي تريد معرفة الآيدي الخاص به")
+# --- 4. أمر الآيدي (أحمر فاقع) ---
+@bot.tree.command(name="id", description="عرض الآيدي")
 async def id_info(interaction: discord.Interaction, member: discord.Member = None):
     target = member or interaction.user
-    
-    # إنشاء الإيمبد
-    embed = discord.Embed(
-        title="🆔 معرف العضو (User ID)",
-        color=0x2b2d31  # لون رمادي غامق رسمي، يمكنك تغييره
-    )
-    
-    # إضافة صورة العضو المصغرة
+    embed = discord.Embed(title="🆔 معرف العضو", color=0xff0000)
+    embed.add_field(name="العضو", value=target.mention, inline=True)
+    embed.add_field(name="الآيدي", value=f"`{target.id}`", inline=True)
     embed.set_thumbnail(url=target.display_avatar.url)
-    
-    # إضافة الحقول
-    embed.add_field(name="👤 العضو", value=target.mention, inline=True)
-    embed.add_field(name="📄 الآيدي", value=f"`{target.id}`", inline=True)
-    
-    # تذييل الرسالة باسم الشخص الذي طلب الأمر
-    embed.set_footer(text=f"طلب بواسطة: {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
-
     await interaction.response.send_message(embed=embed)
 
-@bot.tree.command(name="server", description="عرض معلومات السيرفر بالتفصيل")
+# --- 5. أمر السيرفر (أحمر فاقع) ---
+@bot.tree.command(name="server", description="معلومات السيرفر")
 async def server_info(interaction: discord.Interaction):
     guild = interaction.guild
-    
-    # حساب الإحصائيات
-    total_members = guild.member_count
-    bot_count = len([m for m in guild.members if m.bot])
-    human_count = total_members - bot_count
-    
-    # تاريخ إنشاء السيرفر
     created_ts = int(guild.created_at.timestamp())
-    
-    # إنشاء الإيمبد بتنسيق يشبه الصورة
-    embed = discord.Embed(color=0x2b2d31) # لون داكن رسمي
-    if guild.icon:
-        embed.set_thumbnail(url=guild.icon.url)
-    
-    # السطر الأول: المالك وتاريخ الإنشاء والآيدي (باستخدام المنشن والأيقونات)
-    embed.add_field(
-        name="", 
-        value=f"👑 **مملوك بواسطة**\n{guild.owner.mention}", 
-        inline=True
-    )
-    embed.add_field(
-        name="", 
-        value=f"📅 **تاريخ الانشاء**\n<t:{created_ts}:D>\n**<t:{created_ts}:R>**", 
-        inline=True
-    )
-    embed.add_field(
-        name="", 
-        value=f"🆔 **ايدي السيرفر**\n`{guild.id}`", 
-        inline=True
-    )
-
-    # السطر الثاني: الأعضاء بالتفصيل
-    embed.add_field(
-        name="", 
-        value=f"👥 **الأعضاء ({total_members})**\nالاعضاء: `{human_count}`\nالبوتات: `{bot_count}`", 
-        inline=True
-    )
-
-    # السطر الثالث: الرومات (إحصائية إضافية لتعبئة الشكل)
-    embed.add_field(
-        name="", 
-        value=f"💬 **الرومات ({len(guild.channels)})**\nكتابي: `{len(guild.text_channels)}` | صوتي: `{len(guild.voice_channels)}`", 
-        inline=True
-    )
-
-    # السطر الأخير: تعزيز السيرفر
-    embed.add_field(
-        name="", 
-        value=f"✨ **التعزيزات**\nعدد البوستات: `{guild.premium_subscription_count}`", 
-        inline=True
-    )
-
+    embed = discord.Embed(title=f"🏡 سيرفر: {guild.name}", color=0xff0000)
+    if guild.icon: embed.set_thumbnail(url=guild.icon.url)
+    embed.add_field(name="👑 المالك", value=guild.owner.mention, inline=True)
+    embed.add_field(name="📅 تاريخ الإنشاء", value=f"<t:{created_ts}:D>", inline=True)
+    embed.add_field(name="👥 الأعضاء", value=f"`{guild.member_count}`", inline=True)
     await interaction.response.send_message(embed=embed)
-@bot.tree.command(name="name", description="عرض اليوزر نيم والدسبلي نيم والسيرفر نك نيم")
-@app_commands.describe(member="العضو المراد فحص أسمائه")
+
+# --- 6. أمر الأسماء (أحمر فاقع) ---
+@bot.tree.command(name="name", description="عرض الأسماء")
 async def name_info(interaction: discord.Interaction, member: discord.Member = None):
     target = member or interaction.user
-    
-    # 1. اليوزر نيم (الأصلي)
-    user_name = target.name
-    
-    # 2. الدسبلي نيم (الاسم العالمي في الحساب)
-    display_name = target.global_name if target.global_name else "لا يوجد"
-    
-    # 3. السيرفر نك نيم (اللقب داخل السيرفر فقط)
-    server_nick = target.nick
-
-    embed = discord.Embed(
-        title="🏷️ قائمة الأسماء", 
-        description=f"الأسماء الخاصة بالعضو: {target.mention}", 
-        color=0x000000
-    )
-    
-    embed.add_field(name="User Name", value=f"`{user_name}`", inline=False)
-    embed.add_field(name="Display Name", value=f"`{display_name}`", inline=False)
-    
-    # يظهر فقط إذا كان مغير اسمه داخل السيرفر
-    if server_nick:
-        embed.add_field(name="Server Nick Name", value=f"`{server_nick}`", inline=False)
-    
-    embed.set_author(name=target.name, icon_url=target.display_avatar.url)
-    
+    embed = discord.Embed(title="🏷️ قائمة الأسماء", color=0xff0000)
+    embed.add_field(name="User Name", value=f"`{target.name}`", inline=False)
+    embed.add_field(name="Display Name", value=f"`{target.display_name}`", inline=False)
     await interaction.response.send_message(embed=embed)
-    
-@bot.tree.command(name="user", description="عرض معلومات الحساب وتاريخ الانضمام")
+
+# --- 7. أمر اليوزر (أحمر فاقع) ---
+@bot.tree.command(name="user", description="عرض معلومات الحساب")
 async def user_info(interaction: discord.Interaction, member: discord.Member = None):
-    # نستخدم defer لإخبار ديسكورد أن البوت يفكر، ليعطينا وقتاً أطول للرد
-    await interaction.response.defer() 
-    
+    await interaction.response.defer()
     target = member or interaction.user
     created_ts = int(target.created_at.timestamp())
     joined_ts = int(target.joined_at.timestamp())
-    
-    embed = discord.Embed(title=f"👤 معلومات العضو: {target.display_name}", color=0x000000)
+    embed = discord.Embed(title=f"👤 معلومات: {target.display_name}", color=0xff0000)
     embed.set_thumbnail(url=target.display_avatar.url)
-    
-    embed.add_field(name="🗓️ تاريخ إنشاء الحساب", value=f"<t:{created_ts}:D> (<t:{created_ts}:R>)", inline=False)
-    embed.add_field(name="📥 تاريخ دخول السيرفر", value=f"<t:{joined_ts}:D> (<t:{joined_ts}:R>)", inline=False)
-
-    # نستخدم followup لأننا قمنا بعمل defer في البداية
+    embed.add_field(name="🗓️ إنشاء الحساب", value=f"<t:{created_ts}:D> (<t:{created_ts}:R>)", inline=False)
+    embed.add_field(name="📥 دخول السيرفر", value=f"<t:{joined_ts}:D> (<t:{joined_ts}:R>)", inline=False)
     await interaction.followup.send(embed=embed)
-    
-    # تحويل التواريخ إلى طوابع زمنية لديسكورد
-    # :D تعني التاريخ (يوم/شهر/سنة)
-    # :R تعني الوقت النسبي (قبل كم)
-    created_ts = int(target.created_at.timestamp())
-    joined_ts = int(target.joined_at.timestamp())
-    
-    embed = discord.Embed(title=f"👤 معلومات العضو: {target.display_name}", color=0x000000) # لون أسود فخم
-    embed.set_thumbnail(url=target.display_avatar.url)
-    
-    embed.add_field(
-        name="🗓️ تاريخ إنشاء الحساب", 
-        value=f"أنشأ حسابه في: <t:{created_ts}:D>\nأي قبل: **<t:{created_ts}:R>**", 
-        inline=False
-    )
-    
-    embed.add_field(
-        name="📥 تاريخ دخول السيرفر", 
-        value=f"دخل السيرفر في: <t:{joined_ts}:D>\nأي قبل: **<t:{joined_ts}:R>**", 
-        inline=False
-    )
-
-    await interaction.response.send_message(embed=embed)
 
 @bot.command()
 async def ping(ctx): await ctx.send(f"🏓 Pong! `{round(bot.latency * 1000)}ms`")
