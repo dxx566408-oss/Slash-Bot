@@ -32,11 +32,11 @@ def update_balance():
     new_mrad = int(data.get('mrad'))
     gid = str(list(bot.users_data[uid].keys())[0]) # جلب آيدي السيرفر
 
-    if uid in bot.users_data:
-        bot.users_data[uid][gid]['mrad'] = new_mrad
-        bot.save_data() # حفظ في database.json
-        return jsonify({"status": "success"})
-    return jsonify({"status": "error"}), 404
+    # جلب آيدي السيرفر الأول المسجل للعضو
+    if uid in bot.users_data and bot.users_data[uid]:
+        gid = list(bot.users_data[uid].keys())[0]
+    else:
+        return jsonify({"status": "error", "message": "User not found"}), 404
 
 # --- دالة صنع صورة الكابتشا ---
 def create_captcha_image(text):
