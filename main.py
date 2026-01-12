@@ -11,11 +11,21 @@ from datetime import datetime, timedelta
 from flask import Flask
 from threading import Thread
 
-# --- تشغيل السيرفر لإبقاء البوت حياً ---
-app = Flask('')
+from flask import Flask, render_template
+
+# تحديث تعريف Flask ليدعم مجلد القوالب
+app = Flask(__name__, template_folder='templates')
+
 @app.route('/')
-def home(): return "Hermenya Bot is Online!"
-def run(): app.run(host='0.0.0.0', port=8080)
+def home():
+    # تمرير إحصائيات البوت الحقيقية للموقع
+    return render_template('index.html', 
+                           total_users=len(bot.users_data), 
+                           users_data=bot.users_data)
+
+def run():
+    app.run(host='0.0.0.0', port=8080)
+
 def keep_alive():
     t = Thread(target=run)
     t.start()
