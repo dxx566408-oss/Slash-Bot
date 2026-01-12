@@ -363,8 +363,13 @@ async def ping(ctx): await ctx.send(f"🏓 Pong! `{round(bot.latency * 1000)}ms`
 
 keep_alive()
 
-# --- أمر الترتيب (TOP 10) المطور ---
-@bot.tree.command(name="top", description="عرض ترتيب أفضل 10 أعضاء أو ترتيب عضو معين")
+# --- أمر الترتيب (TOP) المطور والشامل ---
+@bot.tree.command(name="top", description="عرض الترتيب العام أو ترتيب عضو معين مع السياق")
+@app_commands.describe(
+    category="نوع الإحصائية (رسائل أو فويس) - اتركها فارغة لعرض الاثنين",
+    member="العضو المراد رؤية ترتيبه وما حوله",
+    timeframe="الفترة الزمنية (يوم، أسبوع، شهر، الكل)"
+)
 @app_commands.choices(category=[
     app_commands.Choice(name="الرسائل (Text)", value="msg"),
     app_commands.Choice(name="الفويس (Voice)", value="voice")
@@ -374,92 +379,103 @@ keep_alive()
     app_commands.Choice(name="الشهر (Month)", value="month"),
     app_commands.Choice(name="الكل (All Time)", value="all")
 ])
-@app_commands.describe(member="العضو الذي تريد رؤية ترتيبه (اختياري)")
-async def top(interaction: discord.Interaction, category: str, timeframe: str, member: discord.Member = None):
+async def top(
+    interaction: discord.Interaction, 
+    category: str = None, 
+    member: discord.Member = None, 
+    timeframe: str = "all"
+):
     await interaction.response.defer()
     gid = str(interaction.guild.id)
-    leaderboard = []
     now = datetime.now()
+    leaderboard = []
 
-    # 1. تجميع البيانات
+    # 1. تجميع البيانات وحساب السكور بناءً على الاختيارات
     for uid, data in bot.users_data.items():
         if gid in data:
-            server_data = data[gid]
-            score = 0
-            
+            s_data = data[gid]
+            m_score = 0
+            v_score = 0
+
+            # حساب الرسائل
             if timeframe == "all":
-                score = server_data.get("msg_count" if category == "msg" else "voice_seconds", 0)
+                m_score = s_data.get("msg_count", 0)
+                v_score = s_data.get("voice_seconds", 0)
             else:
-                activity_key = "daily_activity" if category == "msg" else "daily_voice"
-                if activity_key in server_data:
-                    for date_str, val in server_data[activity_key].items():
-                        try:
-                            date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-                            delta_days = (now - date_obj).days
-                            if timeframe == "day" and delta_days == 0: score += val
-                            elif timeframe == "week" and delta_days <= 7: score += val
-                            elif timeframe == "month" and delta_days <= 30: score += val
-                        except: continue
+                act_key = "daily_activity"
+                voi_key = "daily_voice"
+                for d_str, val in s_data.get(act_key, {}).items():
+                    try:
+                        delta = (now - datetime.strptime(d_str, "%Y-%m-%d")).days
+                        if (timeframe == "day" and delta == 0) or \
+                           (timeframe == "week" and delta <= 7) or \
+                           (timeframe == "month" and delta <= 30):
+                            m_score += val
+                    except: continue
+                for d_str, val in s_data.get(voi_key, {}).items():
+                    try:
+                        delta = (now - datetime.strptime(d_str, "%Y-%m-%d")).days
+                        if (timeframe == "day" and delta == 0) or \
+                           (timeframe == "week" and delta <= 7) or \
+                           (timeframe == "month" and delta <= 30):
+                            v_score += val
+                    except: continue
+
+            # تحديد "السكور الأساسي" للترتيب بناءً على الفئة المختارة
+            primary_score = m_score if category == "msg" else v_score if category == "voice" else (m_score + (v_score // 60))
             
-            if score > 0:
-                leaderboard.append({"id": int(uid), "score": score})
+            if primary_score > 0:
+                leaderboard.append({
+                    "id": int(uid), 
+                    "msg": m_score, 
+                    "voice": v_score, 
+                    "sort_val": primary_score
+                })
 
     # 2. الترتيب
-    leaderboard.sort(key=lambda x: x["score"], reverse=True)
+    leaderboard.sort(key=lambda x: x["sort_val"], reverse=True)
 
     if not leaderboard:
-        return await interaction.followup.send("❌ لا توجد بيانات كافية لهذا التصنيف حالياً.")
+        return await interaction.followup.send("❌ لا توجد بيانات مسجلة لهذه الفترة.")
 
-    # 3. بناء الإيمبد
-    title_map = {"msg": "✉️ تصنيف الرسائل", "voice": "🎙️ تصنيف وقت الفويس"}
-    time_map = {"day": "خلال الـ 24 ساعة الماضية", "week": "هذا الأسبوع", "month": "هذا الشهر", "all": "السجل التاريخي الكامل"}
+    # 3. تحديد نطاق العرض (السياق أو التوب 10)
+    if member:
+        m_idx = next((i for i, x in enumerate(leaderboard) if x["id"] == member.id), None)
+        if m_idx is None:
+            return await interaction.followup.send(f"❌ {member.mention} ليس لديه نشاط في هذه الفترة.")
+        start, end = max(0, m_idx - 5), min(len(leaderboard), m_idx + 6)
+        display_list = [(i + 1, leaderboard[i]) for i in range(start, end)]
+    else:
+        display_list = [(i + 1, leaderboard[i]) for i in range(min(10, len(leaderboard)))]
+
+    # 4. بناء الإيمبد
+    t_map = {"msg": "✉️ رسائل", "voice": "🎙️ فويس", None: "📊 ترتيب عام"}
+    f_map = {"day": "اليوم", "week": "الأسبوع", "month": "الشهر", "all": "الكل"}
     
     embed = discord.Embed(
-        title=title_map[category],
-        description=f"📅 الفترة: **{time_map[timeframe]}**",
+        title=f"{t_map[category]} | {f_map[timeframe]}",
         color=0xff0000,
-        timestamp=datetime.now()
+        timestamp=now
     )
 
-    # حقل ترتيب العضو المختار (إذا تم اختياره)
-    if member:
-        rank = next((i for i, item in enumerate(leaderboard, 1) if item["id"] == member.id), None)
-        if rank:
-            s = leaderboard[rank-1]["score"]
-            val_text = f"`{s}` رسالة" if category == "msg" else f"`{s//3600}`س و `{(s%3600)//60}`د و `{s%60}`ث"
-            embed.add_field(name=f"👤 مركز {member.display_name}", value=f"يحتل المركز **#{rank}** برصيد {val_text}", inline=False)
-        else:
-            embed.add_field(name=f"👤 مركز {member.display_name}", value="غير متواجد في القائمة لهذه الفترة.", inline=False)
-
-    # قائمة الأعضاء (سواء الـ 10 الأوائل أو سياق العضو)
-    description = ""
+    desc = ""
     for rank, item in display_list:
-        # استخدام المنشن المباشر باستخدام ID العضو
-        user_mention = f"<@{item['id']}>"
+        prefix = "➡️ " if member and item["id"] == member.id else ""
+        medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(rank, f"`#{rank}`")
         
+        # تنسيق النص بناءً على الفئة المختارة (أو كلاهما)
+        score_info = ""
         if category == "msg":
-            score_text = f"`{item['score']}` رسالة"
+            score_info = f"**{item['msg']}** رسالة"
+        elif category == "voice":
+            score_info = f"**{item['voice']//3600}**س و **{(item['voice']%3600)//60}**د"
         else:
-            h, m = item['score'] // 3600, (item['score'] % 3600) // 60
-            score_text = f"`{h}`س و `{m}`د"
-            
-        # تمييز العضو المختار بسهم إذا كان موجوداً
-        prefix = "➡️ " if member and item['id'] == member.id else ""
-        
-        # تنسيق الميداليات للأوائل
-        medals = {1: "🥇", 2: "🥈", 3: "🥉"}
-        rank_icon = medals.get(rank, f"`#{rank}`")
-        
-        # دمج كل المعلومات في سطر واحد باستخدام المنشن
-        description += f"{prefix}{rank_icon} {user_mention} — {score_text}\n"
+            score_info = f"✉️`{item['msg']}` | 🎙️`{item['voice']//60}د`"
 
-    embed.description = description
+        desc += f"{prefix}{medal} <@{item['id']}> — {score_info}\n"
 
-    embed.add_field(name="🏆 قائمة الـ 10 الأوائل", value=top_text, inline=False)
-    
-    if interaction.guild.icon:
-        embed.set_thumbnail(url=interaction.guild.icon.url)
-    
+    embed.description = desc
+    if interaction.guild.icon: embed.set_thumbnail(url=interaction.guild.icon.url)
     embed.set_footer(text=f"طلب بواسطة: {interaction.user.name}", icon_url=interaction.user.display_avatar.url)
     
     await interaction.followup.send(embed=embed)
