@@ -455,4 +455,45 @@ async def top(interaction: discord.Interaction, category: str, timeframe: str, m
     
     await interaction.followup.send(embed=embed)
 
+# --- أمر مزامنة الرسائل القديمة (للمطور فقط) ---
+@bot.tree.command(name="sync_history", description="مزامنة الرسائل القديمة (للمطور فقط)")
+@app_commands.describe(limit="عدد الرسائل التي يتم فحصها في كل روم (مثلاً 1000)")
+async def sync_history(interaction: discord.Interaction, limit: int = 1000):
+    # تحقق أنك المطور فقط من يستخدم الأمر
+    if interaction.user.id != 1371432836946726934: 
+        return await interaction.response.send_message("❌ هذا الأمر للمطور فقط!", ephemeral=True)
+
+    await interaction.response.defer(ephemeral=True)
+    gid = str(interaction.guild.id)
+    count = 0
+
+    for channel in interaction.guild.text_channels:
+        try:
+            async for message in channel.history(limit=limit):
+                if message.author.bot: continue
+                
+                uid = str(message.author.id)
+                today = message.created_at.strftime("%Y-%m-%d")
+                
+                # جلب البيانات وتحديثها
+                stats = get_stats(uid, gid)
+                stats["msg_count"] += 1
+                
+                # تحديث النشاط اليومي بناءً على تاريخ الرسالة القديمة
+                if "daily_activity" not in stats: stats["daily_activity"] = {}
+                stats["daily_activity"][today] = stats["daily_activity"].get(today, 0) + 1
+                
+                # تحديث الـ XP والمستوى
+                if stats["msg_count"] % 25 == 0:
+                    stats["xp"] += 1
+                    if stats["xp"] >= 20:
+                        stats["level"] += 1
+                        stats["xp"] = 0
+                count += 1
+        except Exception as e:
+            print(f"تعذر قراءة روم {channel.name}: {e}")
+
+    bot.save_data()
+    await interaction.followup.send(f"✅ تمت المزامنة! تم جرد `{count}` رسالة قديمة بنجاح.")
+
 bot.run(os.getenv("DISCORD_TOKEN"))
