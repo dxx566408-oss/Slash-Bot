@@ -254,14 +254,29 @@ async def avatar(interaction: discord.Interaction, member: discord.Member = None
 async def id_info(interaction: discord.Interaction, member: discord.Member = None):
     target = member or interaction.user
     
-    # رسالة واضحة تذكر لمن هذا الآيدي
-    await interaction.response.send_message(f"🆔 المعرف الخاص بـ **{target.display_name}** هو: `{target.id}`")
+    # إنشاء الإيمبد
+    embed = discord.Embed(
+        title="🆔 معرف العضو (User ID)",
+        color=0x2b2d31  # لون رمادي غامق رسمي، يمكنك تغييره
+    )
+    
+    # إضافة صورة العضو المصغرة
+    embed.set_thumbnail(url=target.display_avatar.url)
+    
+    # إضافة الحقول
+    embed.add_field(name="👤 العضو", value=target.mention, inline=True)
+    embed.add_field(name="📄 الآيدي", value=f"`{target.id}`", inline=True)
+    
+    # تذييل الرسالة باسم الشخص الذي طلب الأمر
+    embed.set_footer(text=f"طلب بواسطة: {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
+
+    await interaction.response.send_message(embed=embed)
 
 @bot.tree.command(name="server", description="عرض معلومات السيرفر بالتفصيل")
 async def server_info(interaction: discord.Interaction):
     guild = interaction.guild
     
-    # حساب عدد الأعضاء (بدون البوتات) وعدد البوتات فقط
+    # حساب الإحصائيات
     total_members = guild.member_count
     bot_count = len([m for m in guild.members if m.bot])
     human_count = total_members - bot_count
@@ -269,28 +284,50 @@ async def server_info(interaction: discord.Interaction):
     # تاريخ إنشاء السيرفر
     created_ts = int(guild.created_at.timestamp())
     
-    embed = discord.Embed(title=f"🏡 معلومات سيرفر: {guild.name}", color=0xff0000)
-    
-    # إضافة صورة السيرفر إذا وجدت
+    # إنشاء الإيمبد بتنسيق يشبه الصورة
+    embed = discord.Embed(color=0x2b2d31) # لون داكن رسمي
     if guild.icon:
         embed.set_thumbnail(url=guild.icon.url)
     
-    embed.add_field(name="🆔 آيدي السيرفر", value=f"`{guild.id}`", inline=False)
-    
+    # السطر الأول: المالك وتاريخ الإنشاء والآيدي (باستخدام المنشن والأيقونات)
     embed.add_field(
-        name="🗓️ تاريخ الإنشاء", 
-        value=f"أنشئ في: <t:{created_ts}:D>\nأي قبل: **<t:{created_ts}:R>**", 
-        inline=False
+        name="", 
+        value=f"👑 **مملوك بواسطة**\n{guild.owner.mention}", 
+        inline=True
     )
-    
-    embed.add_field(name="👥 عدد الأعضاء (البشر)", value=f"`{human_count}` عضو", inline=True)
-    embed.add_field(name="🤖 عدد البوتات", value=f"`{bot_count}` بوت", inline=True)
-    
-    # إضافة صاحب السيرفر كمعلومة إضافية
-    embed.add_field(name="👑 صاحب السيرفر", value=f"{guild.owner.mention}", inline=False)
+    embed.add_field(
+        name="", 
+        value=f"📅 **تاريخ الانشاء**\n<t:{created_ts}:D>\n**<t:{created_ts}:R>**", 
+        inline=True
+    )
+    embed.add_field(
+        name="", 
+        value=f"🆔 **ايدي السيرفر**\n`{guild.id}`", 
+        inline=True
+    )
+
+    # السطر الثاني: الأعضاء بالتفصيل
+    embed.add_field(
+        name="", 
+        value=f"👥 **الأعضاء ({total_members})**\nالاعضاء: `{human_count}`\nالبوتات: `{bot_count}`", 
+        inline=True
+    )
+
+    # السطر الثالث: الرومات (إحصائية إضافية لتعبئة الشكل)
+    embed.add_field(
+        name="", 
+        value=f"💬 **الرومات ({len(guild.channels)})**\nكتابي: `{len(guild.text_channels)}` | صوتي: `{len(guild.voice_channels)}`", 
+        inline=True
+    )
+
+    # السطر الأخير: تعزيز السيرفر
+    embed.add_field(
+        name="", 
+        value=f"✨ **التعزيزات**\nعدد البوستات: `{guild.premium_subscription_count}`", 
+        inline=True
+    )
 
     await interaction.response.send_message(embed=embed)
-
 @bot.tree.command(name="name", description="عرض اليوزر نيم والدسبلي نيم والسيرفر نك نيم")
 @app_commands.describe(member="العضو المراد فحص أسمائه")
 async def name_info(interaction: discord.Interaction, member: discord.Member = None):
