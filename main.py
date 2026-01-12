@@ -5,54 +5,73 @@ import os
 import json
 import time
 import random
-import io  # ضروري لمعالجة بيانات الصورة في الذاكرة
-from PIL import Image, ImageDraw, ImageFont  # ضروري لإنشاء صورة الكابتشا
+import io
+from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime, timedelta
-from flask import Flask
+from flask import Flask, render_template, request, jsonify
 from threading import Thread
 
-from flask import Flask, render_template
-
-from flask import Flask, render_template, request, jsonify
-
-# تأكد أن التعريف بهذا الشكل
+# --- إعدادات Flask والموقع ---
 app = Flask(__name__, template_folder='templates')
+
+# 1. إعدادات الأوامر الافتراضية (للتحكم مثل بروبوت)
+DEFAULT_SETTINGS = {
+    "moveme": {"enabled": True, "description": "ينقلك إلى روم صوتي."},
+    "profile": {"enabled": True, "description": "عرض بطاقة التعريف الشخصية العامة."},
+    "user": {"enabled": True, "description": "عرض معلومات الحساب وتاريخ التسجيل."},
+    "avatar": {"enabled": True, "description": "الحصول على الصورة الرمزية للمستخدم."},
+    "daily": {"enabled": True, "description": "الحصول على المكافأة اليومية."}
+}
+
+# دالة لجلب إعدادات الأوامر من ملف منفصل
+def get_settings():
+    if not os.path.exists('settings.json'):
+        with open('settings.json', 'w') as f: json.dump(DEFAULT_SETTINGS, f, indent=4)
+    with open('settings.json', 'r') as f: return json.load(f)
 
 @app.route('/')
 def home():
+    settings = get_settings()
     return render_template('index.html', 
                            total_users=len(bot.users_data), 
-                           users_data=bot.users_data)
+                           users_data=bot.users_data,
+                           settings=settings)
 
-# مسار لتحديث الرصيد من الموقع
+# مسار تحديث الرصيد (موجود مسبقاً)
 @app.route('/update_balance', methods=['POST'])
 def update_balance():
     data = request.json
     uid = str(data.get('uid'))
     new_mrad = int(data.get('mrad'))
-    gid = str(list(bot.users_data[uid].keys())[0]) # جلب آيدي السيرفر
-
-    # جلب آيدي السيرفر الأول المسجل للعضو
+    
     if uid in bot.users_data and bot.users_data[uid]:
         gid = list(bot.users_data[uid].keys())[0]
-    else:
-        return jsonify({"status": "error", "message": "User not found"}), 404
+        bot.users_data[uid][gid]['mrad'] = new_mrad
+        bot.save_data()
+        return jsonify({"status": "success"})
+    return jsonify({"status": "error", "message": "User not found"}), 404
+
+# مسار تفعيل وتعطيل الأوامر (مثل بروبوت)
+@app.route('/toggle_command', methods=['POST'])
+def toggle_command():
+    data = request.json
+    cmd_name = data.get('command')
+    settings = get_settings()
+    if cmd_name in settings:
+        settings[cmd_name]['enabled'] = not settings[cmd_name]['enabled']
+        with open('settings.json', 'w') as f: json.dump(settings, f, indent=4)
+        return jsonify({"status": "success", "new_state": settings[cmd_name]['enabled']})
+    return jsonify({"status": "error"}), 400
 
 # --- دالة صنع صورة الكابتشا ---
 def create_captcha_image(text):
-    # إنشاء خلفية داكنة تناسب ديسكورد
     img = Image.new('RGB', (150, 60), color=(43, 45, 49))
     d = ImageDraw.Draw(img)
-    
-    # كتابة الأرقام باللون الأحمر الفاقع في منتصف الصورة تقريباً
     d.text((55, 20), text, fill=(255, 0, 0)) 
-    
-    # إضافة 8 خطوط تشويش عشوائية خلف/فوق النص
     for i in range(8):
         d.line([(random.randint(0,150), random.randint(0,60)), 
                 (random.randint(0,150), random.randint(0,60))], 
                fill=(100, 100, 100))
-               
     img_byte_arr = io.BytesIO()
     img.save(img_byte_arr, format='PNG')
     img_byte_arr.seek(0)
@@ -80,7 +99,6 @@ class HermenyaBot(commands.Bot):
         print("✅ تم مزامنة جميع الأوامر بنجاح")
 
 bot = HermenyaBot()
-
 # --- دالة جلب البيانات ---
 # --- أمر البروفايل المحلي (profile) ---
 @bot.tree.command(name="profile", description="عرض مستواك في هذا السيرفر فقط")
