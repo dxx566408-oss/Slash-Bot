@@ -1,40 +1,180 @@
-<div class="modal fade" id="editModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content bg-dark border-danger">
-            <div class="modal-header border-danger">
-                <h5 class="modal-title">تعديل رصيد مراد</h5>
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Herminia Kingdom | Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --discord-dark: #2b2d31;
+            --discord-sidebar: #1e1f22;
+            --discord-card: #232428;
+            --accent-blue: #5865f2;
+            --success-green: #23a559;
+            --text-muted: #b5bac1;
+        }
+
+        body {
+            background-color: var(--discord-dark);
+            color: #f2f3f5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+        }
+
+        /* القائمة الجانبية */
+        .sidebar {
+            width: 280px;
+            background-color: var(--discord-sidebar);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid #1a1b1e;
+        }
+
+        .sidebar-header {
+            font-weight: bold;
+            font-size: 1.2rem;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #3f4147;
+            margin-bottom: 20px;
+            color: white;
+        }
+
+        .nav-item {
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 5px;
+            transition: 0.2s;
+            color: var(--text-muted);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+        }
+
+        .nav-item i { margin-left: 10px; width: 20px; }
+        .nav-item:hover { background-color: #35373c; color: white; }
+        .nav-item.active { background-color: #3f4147; color: white; }
+
+        /* المحتوى الرئيسي */
+        .main-content {
+            flex: 1;
+            padding: 40px;
+            overflow-y: auto;
+        }
+
+        .header-title {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 30px;
+        }
+
+        /* بطاقة الأمر */
+        .command-card {
+            background-color: var(--discord-card);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #1a1b1e;
+            transition: 0.3s;
+        }
+
+        .command-card:hover { border-color: var(--accent-blue); }
+
+        .cmd-info h5 { margin: 0; font-size: 1.1rem; color: #fff; }
+        .cmd-info p { margin: 5px 0 0; font-size: 0.9rem; color: var(--text-muted); }
+
+        /* زر التبديل (Switch) */
+        .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #3f4147; transition: .3s; border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px;
+            background-color: white; transition: .3s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--success-green); }
+        input:checked + .slider:before { transform: translateX(-24px); }
+
+        .btn-edit {
+            background-color: #4e5058;
+            color: white;
+            border: none;
+            padding: 6px 15px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            margin-left: 15px;
+            transition: 0.2s;
+        }
+        .btn-edit:hover { background-color: #6d6f78; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar shadow">
+        <div class="sidebar-header text-center">
+            <i class="fas fa-crown text-warning me-2"></i> Herminia Kingdom
+        </div>
+        <a href="#" class="nav-item active"><i class="fas fa-terminal"></i> الأوامر العامة</a>
+        <a href="#" class="nav-item"><i class="fas fa-door-open"></i> الترحيب والمغادرة</a>
+        <a href="#" class="nav-item"><i class="fas fa-robot"></i> الرد التلقائي</a>
+        <a href="#" class="nav-item"><i class="fas fa-shield-halved"></i> الحماية</a>
+        <a href="#" class="nav-item"><i class="fas fa-cog"></i> الإعدادات</a>
+    </div>
+
+    <div class="main-content">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="header-title">الأوامر العامة</h2>
+            <span class="badge bg-secondary">إجمالي المستخدمين: {{ total_users }}</span>
+        </div>
+
+        <div id="commands-list">
+            {% for cmd, info in settings.items() %}
+            <div class="command-card shadow-sm">
+                <div class="cmd-info">
+                    <h5>{{ cmd }}/</h5>
+                    <p>{{ info.description }}</p>
+                </div>
+                <div class="d-flex align-items-center">
+                    <button class="btn-edit" onclick="alert('قريباً: تعديل إعدادات {{ cmd }}')">تعديل</button>
+                    <label class="switch">
+                        <input type="checkbox" {% if info.enabled %}checked{% endif %} 
+                               onchange="toggleCommand('{{ cmd }}')">
+                        <span class="slider"></span>
+                    </label>
+                </div>
             </div>
-            <div class="modal-body">
-                <input type="hidden" id="editUid">
-                <label>الرصيد الجديد:</label>
-                <input type="number" id="newMrad" class="form-control bg-secondary text-white border-0">
-            </div>
-            <div class="modal-footer border-danger">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                <button type="button" class="btn btn-danger" onclick="saveChange()">حفظ التغييرات</button>
-            </div>
+            {% endfor %}
         </div>
     </div>
-</div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-function openEdit(uid, currentMrad) {
-    document.getElementById('editUid').value = uid;
-    document.getElementById('newMrad').value = currentMrad;
-    new bootstrap.Modal(document.getElementById('editModal')).show();
-}
+    <script>
+        function toggleCommand(commandName) {
+            fetch('/toggle_command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command: commandName })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    console.log(`${commandName} status changed to: ${data.new_state}`);
+                } else {
+                    alert('حدث خطأ أثناء تحديث حالة الأمر');
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+    </script>
 
-function saveChange() {
-    const uid = document.getElementById('editUid').value;
-    const mrad = document.getElementById('newMrad').value;
-
-    fetch('/update_balance', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({uid: uid, mrad: mrad})
-    }).then(res => {
-        if(res.ok) location.reload();
-    });
-}
-</script>
+</body>
+</html>
