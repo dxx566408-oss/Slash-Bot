@@ -64,20 +64,60 @@ class HermenyaBot(commands.Bot):
 bot = HermenyaBot()
 
 # --- دالة جلب البيانات ---
-def get_stats(user_id):
+# --- أمر البروفايل المحلي (profile) ---
+@bot.tree.command(name="profile", description="عرض مستواك في هذا السيرفر فقط")
+async def profile(interaction: discord.Interaction, member: discord.Member = None):
+    target = member or interaction.user
+    stats = get_stats(target.id, interaction.guild.id)
+    embed = discord.Embed(title=f"🏠 ملف {target.display_name} المحلي", color=0xff0000)
+    embed.set_thumbnail(url=target.display_avatar.url)
+    embed.add_field(name="المستوى", value=f"⭐ `{stats['level']}`", inline=True)
+    embed.add_field(name="الخبرة", value=f"✨ `{stats['xp']}/20`", inline=True)
+    embed.add_field(name="الرسائل", value=f"✉️ `{stats['msg_count']}`", inline=False)
+    await interaction.response.send_message(embed=embed)
+
+# --- أمر البروفايل العالمي (globalprofile) ---
+@bot.tree.command(name="globalprofile", description="عرض مستواك الإجمالي في كل السيرفرات")
+async def globalprofile(interaction: discord.Interaction, member: discord.Member = None):
+    target = member or interaction.user
+    stats = get_stats(target.id) 
+    embed = discord.Embed(title=f"🌍 الحساب العالمي: {target.display_name}", color=0xff0000)
+    embed.set_thumbnail(url=target.display_avatar.url)
+    embed.add_field(name="المستوى العالمي", value=f"🏆 `{stats['level']}`", inline=True)
+    embed.add_field(name="الخبرة الإجمالية", value=f"✨ `{stats['xp']}/20`", inline=True)
+    embed.add_field(name="مجموع الرسائل الكلي", value=f"📧 `{stats['msg_count']}`", inline=False)
+    h = stats['voice_seconds'] // 3600
+    m = (stats['voice_seconds'] % 3600) // 60
+    embed.add_field(name="إجمالي وقت الفويس", value=f"🎙️ `{h}` ساعة و `{m}` دقيقة", inline=False)
+    await interaction.response.send_message(embed=embed)
+
+def get_stats(user_id, guild_id=None):
     uid = str(user_id)
     if uid not in bot.users_data:
-        bot.users_data[uid] = {
-            "mrad": 0, "level": 0, "xp": 0, 
-            "msg_count": 0, "voice_seconds": 0, "rank": "عضو"
-        }
-    return bot.users_data[uid]
+        bot.users_data[uid] = {"mrad": 0}
+    
+    if guild_id:
+        gid = str(guild_id)
+        if gid not in bot.users_data[uid]:
+            bot.users_data[uid][gid] = {"level": 0, "xp": 0, "msg_count": 0, "voice_seconds": 0}
+        return bot.users_data[uid][gid]
+    else:
+        all_stats = {"level": 0, "xp": 0, "msg_count": 0, "voice_seconds": 0, "mrad": bot.users_data[uid].get("mrad", 0)}
+        total_xp = 0
+        for key, value in bot.users_data[uid].items():
+            if isinstance(value, dict):
+                all_stats["msg_count"] += value.get("msg_count", 0)
+                all_stats["voice_seconds"] += value.get("voice_seconds", 0)
+                total_xp += (value.get("level", 0) * 20) + value.get("xp", 0)
+        all_stats["level"] = total_xp // 20
+        all_stats["xp"] = total_xp % 20
+        return all_stats
 
 # --- نظام الحسبة التلقائية ---
 @bot.event
 async def on_message(message):
     if message.author.bot: return
-    stats = get_stats(message.author.id)
+    stats = get_stats(message.author.id, message.guild.id)
     stats["msg_count"] += 1
     if stats["msg_count"] % 25 == 0:
         stats["xp"] += 1
@@ -95,7 +135,7 @@ async def on_voice_state_update(member, before, after):
     elif before.channel is not None and after.channel is None:
         if member.id in bot.voice_times:
             duration = int(time.time() - bot.voice_times.pop(member.id))
-            stats = get_stats(member.id)
+            stats = get_stats(member.id, member.guild.id)
             stats["voice_seconds"] += duration 
             while stats["voice_seconds"] >= 300:
                 stats["xp"] += 1
