@@ -431,20 +431,29 @@ async def top(interaction: discord.Interaction, category: str, timeframe: str, m
         else:
             embed.add_field(name=f"👤 مركز {member.display_name}", value="غير متواجد في القائمة لهذه الفترة.", inline=False)
 
-    # قائمة العشرة الأوائل
-    top_text = ""
-    for i, item in enumerate(leaderboard[:10], 1):
-        m_obj = interaction.guild.get_member(item["id"])
-        name = m_obj.display_name if m_obj else f"عضو غادر ({item['id']})"
+    # قائمة الأعضاء (سواء الـ 10 الأوائل أو سياق العضو)
+    description = ""
+    for rank, item in display_list:
+        # استخدام المنشن المباشر باستخدام ID العضو
+        user_mention = f"<@{item['id']}>"
         
         if category == "msg":
-            score_display = f"`{item['score']}` رسالة"
+            score_text = f"`{item['score']}` رسالة"
         else:
-            score_display = f"`{item['score'] // 3600}`س و `{(item['score'] % 3600) // 60}`د"
+            h, m = item['score'] // 3600, (item['score'] % 3600) // 60
+            score_text = f"`{h}`س و `{m}`د"
             
+        # تمييز العضو المختار بسهم إذا كان موجوداً
+        prefix = "➡️ " if member and item['id'] == member.id else ""
+        
+        # تنسيق الميداليات للأوائل
         medals = {1: "🥇", 2: "🥈", 3: "🥉"}
-        rank_icon = medals.get(i, f"`#{i}`")
-        top_text += f"{rank_icon} **{name}** — {score_display}\n"
+        rank_icon = medals.get(rank, f"`#{rank}`")
+        
+        # دمج كل المعلومات في سطر واحد باستخدام المنشن
+        description += f"{prefix}{rank_icon} {user_mention} — {score_text}\n"
+
+    embed.description = description
 
     embed.add_field(name="🏆 قائمة الـ 10 الأوائل", value=top_text, inline=False)
     
