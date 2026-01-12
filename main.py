@@ -146,62 +146,6 @@ async def mrad(interaction: discord.Interaction, user: discord.Member = None, am
     except TimeoutError:
         await interaction.followup.send("⚠️ انتهى الوقت، تم إلغاء العملية.")
 
-# --- 2. أمر المستوى ---
-@bot.tree.command(name="level", description="مستوى التفاعل في السيرفر")
-async def level(interaction: discord.Interaction, user: discord.Member = None):
-    user = user or interaction.user
-    s = get_stats(user.id)
-    embed = discord.Embed(title=f"📊 مستوى {user.display_name}", color=discord.Color.red())
-    embed.add_field(name="Lvl", value=f"`{s['level']}`")
-    embed.add_field(name="XP", value=f"`{s['xp']}/20`")
-    await interaction.response.send_message(embed=embed)
-
-# --- 3. أمر البروفايل العالمي ---
-@bot.tree.command(name="profile", description="البطاقة الشاملة للعضو")
-@app_commands.describe(user="العضو المراد عرض بروفايله")
-async def profile(interaction: discord.Interaction, user: discord.Member = None):
-    # استخدام defer لتجنب خطأ التفاعل (Unknown Interaction)
-    await interaction.response.defer()
-    
-    target = user or interaction.user
-    s = get_stats(target.id)
-    
-    # جلب البيانات (المستوى يبدأ من 0)
-    mrad_bal = s.get('mrad', 0)
-    lvl = s.get('level', 0) # يبدأ من 0 كما طلبت
-    xp = s.get('xp', 0)
-    msgs = s.get('msg_count', 0)
-    v_mins = s.get('voice_mins', 0)
-
-    embed = discord.Embed(
-        title=f"👤 ملف العضو: {target.display_name}", 
-        color=discord.Color.red()
-    )
-    
-    # صورة العضو
-    embed.set_thumbnail(url=target.display_avatar.url)
-    
-    # الحقول المطلوبة فقط (بدون رتبة)
-    embed.add_field(name="💰 رصيد مراد", value=f"`{mrad_bal}`", inline=True)
-    embed.add_field(name="⭐ المستوى", value=f"`{lvl}`", inline=True)
-    embed.add_field(name="✨ الخبرة (XP)", value=f"`{xp}/20`", inline=True)
-    
-    embed.add_field(name="💬 الرسائل", value=f"`{msgs}`", inline=True)
-    embed.add_field(name="🎙️ الفويس", value=f"`{v_mins} min`", inline=True)
-    
-    embed.set_footer(text=f"ID: {target.id}")
-
-    # إرسال الرد
-    await interaction.followup.send(embed=embed)
-
-# --- 4. أمر التوب ---
-@bot.tree.command(name="top", description="أغنى 10 في مراد")
-async def top(interaction: discord.Interaction):
-    sorted_users = sorted(bot.users_data.items(), key=lambda x: x[1]['mrad'], reverse=True)[:10]
-    desc = "\n".join([f"**#{i+1}** | <@{uid}> - `{d['mrad']}`" for i, (uid, d) in enumerate(sorted_users)])
-    await interaction.response.send_message(embed=discord.Embed(title="🏆 توب مراد", description=desc or "لا بيانات", color=discord.Color.red()))
-
-# --- 5. النرد ---
 @bot.tree.command(name="dice", description="القاء حجر نرد")
 async def dice(interaction: discord.Interaction, bet: int = None):
     s = get_stats(interaction.user.id)
@@ -214,7 +158,6 @@ async def dice(interaction: discord.Interaction, bet: int = None):
         bot.save_data()
     await interaction.response.send_message(msg)
 
-# --- أوامر المعلومات (6-11) ---
 @bot.tree.command(name="avatar", description="عرض صورة الحساب الشخصية")
 @app_commands.describe(member="العضو الذي تريد رؤية صورته")
 async def avatar(interaction: discord.Interaction, member: discord.Member = None):
