@@ -13,22 +13,30 @@ from threading import Thread
 
 from flask import Flask, render_template
 
-# تحديث تعريف Flask ليدعم مجلد القوالب
+from flask import Flask, render_template, request, jsonify
+
+# تأكد أن التعريف بهذا الشكل
 app = Flask(__name__, template_folder='templates')
 
 @app.route('/')
 def home():
-    # تمرير إحصائيات البوت الحقيقية للموقع
     return render_template('index.html', 
                            total_users=len(bot.users_data), 
                            users_data=bot.users_data)
 
-def run():
-    app.run(host='0.0.0.0', port=8080)
+# مسار لتحديث الرصيد من الموقع
+@app.route('/update_balance', methods=['POST'])
+def update_balance():
+    data = request.json
+    uid = str(data.get('uid'))
+    new_mrad = int(data.get('mrad'))
+    gid = str(list(bot.users_data[uid].keys())[0]) # جلب آيدي السيرفر
 
-def keep_alive():
-    t = Thread(target=run)
-    t.start()
+    if uid in bot.users_data:
+        bot.users_data[uid][gid]['mrad'] = new_mrad
+        bot.save_data() # حفظ في database.json
+        return jsonify({"status": "success"})
+    return jsonify({"status": "error"}), 404
 
 # --- دالة صنع صورة الكابتشا ---
 def create_captcha_image(text):
