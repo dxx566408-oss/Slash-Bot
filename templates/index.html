@@ -1,54 +1,40 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة تحكم بوت هيرمينيا</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body { background-color: #2b2d31; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .card { background-color: #313338; border: 1px solid #ff0000; color: white; margin-bottom: 20px; }
-        .table { color: white; }
-        .status-online { color: #23a55a; font-weight: bold; }
-    </style>
-</head>
-<body class="container py-5">
-    <div class="text-center mb-5">
-        <h1 class="text-danger">🛡️ Hermenya Dashboard</h1>
-        <p>حالة البوت: <span class="status-online">متصل (Online)</span></p>
-    </div>
-
-    <div class="row">
-        <div class="col-md-4">
-            <div class="card p-3 text-center">
-                <h4>إجمالي المستخدمين</h4>
-                <p class="display-5">{{ total_users }}</p>
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark border-danger">
+            <div class="modal-header border-danger">
+                <h5 class="modal-title">تعديل رصيد مراد</h5>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editUid">
+                <label>الرصيد الجديد:</label>
+                <input type="number" id="newMrad" class="form-control bg-secondary text-white border-0">
+            </div>
+            <div class="modal-footer border-danger">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-danger" onclick="saveChange()">حفظ التغييرات</button>
             </div>
         </div>
     </div>
+</div>
 
-    <div class="card p-4">
-        <h3 class="mb-4">إدارة الرصيد (مراد)</h3>
-        <table class="table table-dark table-striped">
-            <thead>
-                <tr>
-                    <th>المستخدم (ID)</th>
-                    <th>رصيد مراد</th>
-                    <th>إجراءات</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for uid, data in users_data.items() %}
-                <tr>
-                    <td>{{ uid }}</td>
-                    <td><span class="badge bg-danger">{{ data.get('mrad', 0) }}</span></td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-info">تعديل</button>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</body>
-</html>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function openEdit(uid, currentMrad) {
+    document.getElementById('editUid').value = uid;
+    document.getElementById('newMrad').value = currentMrad;
+    new bootstrap.Modal(document.getElementById('editModal')).show();
+}
+
+function saveChange() {
+    const uid = document.getElementById('editUid').value;
+    const mrad = document.getElementById('newMrad').value;
+
+    fetch('/update_balance', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({uid: uid, mrad: mrad})
+    }).then(res => {
+        if(res.ok) location.reload();
+    });
+}
+</script>
