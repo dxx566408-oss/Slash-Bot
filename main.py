@@ -5,6 +5,8 @@ import os
 import json
 import time
 import random
+import io  # ضروري لمعالجة بيانات الصورة في الذاكرة
+from PIL import Image, ImageDraw, ImageFont  # ضروري لإنشاء صورة الكابتشا
 from datetime import datetime
 from flask import Flask
 from threading import Thread
@@ -17,6 +19,26 @@ def run(): app.run(host='0.0.0.0', port=8080)
 def keep_alive():
     t = Thread(target=run)
     t.start()
+
+# --- دالة صنع صورة الكابتشا ---
+def create_captcha_image(text):
+    # إنشاء خلفية داكنة تناسب ديسكورد
+    img = Image.new('RGB', (150, 60), color=(43, 45, 49))
+    d = ImageDraw.Draw(img)
+    
+    # كتابة الأرقام باللون الأحمر الفاقع في منتصف الصورة تقريباً
+    d.text((55, 20), text, fill=(255, 0, 0)) 
+    
+    # إضافة 8 خطوط تشويش عشوائية خلف/فوق النص
+    for i in range(8):
+        d.line([(random.randint(0,150), random.randint(0,60)), 
+                (random.randint(0,150), random.randint(0,60))], 
+               fill=(100, 100, 100))
+               
+    img_byte_arr = io.BytesIO()
+    img.save(img_byte_arr, format='PNG')
+    img_byte_arr.seek(0)
+    return img_byte_arr
 
 # --- إعدادات البوت الأساسية ---
 class HermenyaBot(commands.Bot):
@@ -84,55 +106,76 @@ async def on_voice_state_update(member, before, after):
             bot.save_data()
 
 # --- 1. أمر مراد (أحمر فاقع) ---
-@bot.tree.command(name="mrad", description="عرض وتحويل رصيد مراد")
-async def mrad(interaction: discord.Interaction, user: discord.Member = None, amount: int = None, add_amount: int = None):
+@bot.tree.command(name="mrad", description="عرض أو تحويل رصيد مراد")
+@app_commands.describe(user="العضو المراد التحويل له", amount="المبلغ المراد تحويله")
+async def mrad(interaction: discord.Interaction, user: discord.Member = None, amount: int = None):
     MY_ID = 1371432836946726934 
     
-    if add_amount is not None:
-        if interaction.user.id == MY_ID:
-            stats = get_stats(interaction.user.id)
-            stats["mrad"] += add_amount
-            bot.save_data()
-            return await interaction.response.send_message(f"✅ تم إضافة `{add_amount}` لرصيدك يا مطورنا!")
-        else:
-            return await interaction.response.send_message("❌ هذا الخيار للمطور فقط!", ephemeral=True)
-
+    # 1. حالة عرض الرصيد فقط
     if amount is None:
         target = user or interaction.user
         s = get_stats(target.id)
-        return await interaction.response.send_message(embed=discord.Embed(description=f"💰 رصيد **{target.mention}** هو: `{s['mrad']}` مراد", color=0xff0000))
+        embed = discord.Embed(description=f"💰 رصيد **{target.mention}** هو: `{s['mrad']}` مراد", color=0xff0000)
+        return await interaction.response.send_message(embed=embed)
 
-    # نظام التحويل
-    sender_s = get_stats(interaction.user.id)
-    if amount <= 0 or sender_s["mrad"] < amount:
-        return await interaction.response.send_message("❌ رصيدك لا يكفي للتحويل!", ephemeral=True)
+    # 2. إعداد البيانات
+    sender_id = interaction.user.id
+    receiver_id = user.id
+    sender_stats = get_stats(sender_id)
+    receiver_stats = get_stats(receiver_id)
 
-    captcha = str(random.randint(1111, 9999))
-    await interaction.response.send_message(
-        embed=discord.Embed(
-            title="🛡️ تحقق", 
-            description=f"اكتب الرقم للتأكيد: **`{captcha}`**", 
-            color=0xff0000
-        )
+    # 3. التحقق من الشحن الذاتي للمطور
+    if sender_id == receiver_id:
+        if sender_id == MY_ID:
+            receiver_stats["mrad"] += amount
+            bot.save_data()
+            return await interaction.response.send_message(f"✅ أهلاً مطورنا، تم إضافة `{amount}` لرصيدك بنجاح!")
+        else:
+            return await interaction.response.send_message("❌ لا يمكنك التحويل لنفسك!", ephemeral=True)
+
+    # 4. فحص رصيد المستخدم العادي
+    if sender_id != MY_ID and sender_stats["mrad"] < amount:
+        return await interaction.response.send_message("❌ رصيدك لا يكفي لإتمام هذه العملية!", ephemeral=True)
+
+    if amount <= 0:
+        return await interaction.response.send_message("❌ يجب أن يكون المبلغ أكبر من صفر!", ephemeral=True)
+
+    # 5. نظام الكابتشا (الصورة) للتحويل بين الأشخاص
+    captcha_text = str(random.randint(1111, 9999))
+    captcha_file = discord.File(create_captcha_image(captcha_text), filename="captcha.png")
+
+    embed_captcha = discord.Embed(
+        title="🛡️ تحقق الأمان", 
+        description=f"اكتب الأرقام الظاهرة في الصورة للتأكيد:\nلتحويل `{amount}` إلى {user.mention}", 
+        color=0xff0000
     )
+    embed_captcha.set_image(url="attachment://captcha.png")
 
-    def check(m): return m.author == interaction.user and m.channel == interaction.channel
+    await interaction.response.send_message(file=captcha_file, embed=embed_captcha)
+
+    def check(m): 
+        return m.author == interaction.user and m.channel == interaction.channel
+        
     try:
         msg_res = await bot.wait_for('message', check=check, timeout=30.0)
-        if msg_res.content == captcha:
+        if msg_res.content == captcha_text:
             await msg_res.delete()
             await interaction.delete_original_response()
             
-            receiver_s = get_stats(user.id)
-            sender_s["mrad"] -= amount
-            receiver_s["mrad"] += amount
+            # تنفيذ العملية (المطور لا ينقص رصيده)
+            if sender_id != MY_ID:
+                sender_stats["mrad"] -= amount
+            
+            receiver_stats["mrad"] += amount
             bot.save_data()
-            await interaction.followup.send(f"✅ تم تحويل `{amount}` إلى {user.mention}")
+            
+            await interaction.followup.send(f"✅ تم تحويل `{amount}` إلى {user.mention} بنجاح.")
         else:
             await msg_res.delete()
             await interaction.followup.send("❌ الرقم غير صحيح، تم إلغاء العملية.", ephemeral=True)
+            
     except TimeoutError:
-        await interaction.followup.send("⚠️ انتهى الوقت، تم إلغاء العملية.")
+        await interaction.followup.send("⚠️ انتهى الوقت، تم إلغاء عملية التحويل.")
 
 # --- 3. أمر الأفاتار (أحمر فاقع) ---
 @bot.tree.command(name="avatar", description="عرض صورة الحساب")
