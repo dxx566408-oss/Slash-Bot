@@ -134,19 +134,6 @@ async def mrad(interaction: discord.Interaction, user: discord.Member = None, am
     except TimeoutError:
         await interaction.followup.send("⚠️ انتهى الوقت، تم إلغاء العملية.")
 
-# --- 2. أمر النرد (أحمر فاقع) ---
-@bot.tree.command(name="dice", description="إلقاء حجر نرد")
-async def dice(interaction: discord.Interaction, bet: int = None):
-    s = get_stats(interaction.user.id)
-    if bet and (bet <= 0 or s["mrad"] < bet): return await interaction.response.send_message("❌ رصيد غير كافٍ", ephemeral=True)
-    res = random.randint(1, 6)
-    msg = f"🎲 النرد: **{res}**"
-    if bet:
-        if res >= 4: s["mrad"] += bet; msg += f"\n🎉 ربحت `{bet}`"
-        else: s["mrad"] -= bet; msg += f"\n❌ خسرت `{bet}`"
-        bot.save_data()
-    await interaction.response.send_message(embed=discord.Embed(description=msg, color=0xff0000))
-
 # --- 3. أمر الأفاتار (أحمر فاقع) ---
 @bot.tree.command(name="avatar", description="عرض صورة الحساب")
 async def avatar(interaction: discord.Interaction, member: discord.Member = None):
