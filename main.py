@@ -129,56 +129,6 @@ class HermenyaBot(commands.Bot):
         print("✅ تم مزامنة جميع الأوامر بنجاح")
 
 bot = HermenyaBot()
-# --- دالة جلب البيانات ---
-# --- أمر البروفايل المحلي (profile) ---
-@bot.tree.command(name="profile", description="عرض مستواك في هذا السيرفر فقط")
-async def profile(interaction: discord.Interaction, member: discord.Member = None):
-    target = member or interaction.user
-    stats = get_stats(target.id, interaction.guild.id)
-    embed = discord.Embed(title=f"🏠 ملف {target.display_name} المحلي", color=0xff0000)
-    embed.set_thumbnail(url=target.display_avatar.url)
-    embed.add_field(name="المستوى", value=f"⭐ `{stats['level']}`", inline=True)
-    embed.add_field(name="الخبرة", value=f"✨ `{stats['xp']}/20`", inline=True)
-    embed.add_field(name="الرسائل", value=f"✉️ `{stats['msg_count']}`", inline=False)
-    await interaction.response.send_message(embed=embed)
-
-# --- أمر البروفايل العالمي (globalprofile) ---
-@bot.tree.command(name="globalprofile", description="عرض مستواك الإجمالي في كل السيرفرات")
-async def globalprofile(interaction: discord.Interaction, member: discord.Member = None):
-    target = member or interaction.user
-    stats = get_stats(target.id) 
-    embed = discord.Embed(title=f"🌍 الحساب العالمي: {target.display_name}", color=0xff0000)
-    embed.set_thumbnail(url=target.display_avatar.url)
-    embed.add_field(name="المستوى العالمي", value=f"🏆 `{stats['level']}`", inline=True)
-    embed.add_field(name="الخبرة الإجمالية", value=f"✨ `{stats['xp']}/20`", inline=True)
-    embed.add_field(name="مجموع الرسائل الكلي", value=f"📧 `{stats['msg_count']}`", inline=False)
-    h = stats['voice_seconds'] // 3600
-    m = (stats['voice_seconds'] % 3600) // 60
-    s = stats['voice_seconds'] % 60
-    embed.add_field(name="إجمالي وقت الفويس", value=f"🎙️ `{h}` ساعة و `{m}` دقيقة و `{s}` ثانية", inline=False)
-    await interaction.response.send_message(embed=embed)
-
-def get_stats(user_id, guild_id=None):
-    uid = str(user_id)
-    if uid not in bot.users_data:
-        bot.users_data[uid] = {"mrad": 0}
-    
-    if guild_id:
-        gid = str(guild_id)
-        if gid not in bot.users_data[uid]:
-            bot.users_data[uid][gid] = {"level": 0, "xp": 0, "msg_count": 0, "voice_seconds": 0}
-        return bot.users_data[uid][gid]
-    else:
-        all_stats = {"level": 0, "xp": 0, "msg_count": 0, "voice_seconds": 0, "mrad": bot.users_data[uid].get("mrad", 0)}
-        total_xp = 0
-        for key, value in bot.users_data[uid].items():
-            if isinstance(value, dict):
-                all_stats["msg_count"] += value.get("msg_count", 0)
-                all_stats["voice_seconds"] += value.get("voice_seconds", 0)
-                total_xp += (value.get("level", 0) * 20) + value.get("xp", 0)
-        all_stats["level"] = total_xp // 20
-        all_stats["xp"] = total_xp % 20
-        return all_stats
 
 # --- نظام الحسبة المطور مع دعم التواريخ ---
 @bot.event
@@ -231,79 +181,7 @@ async def on_voice_state_update(member, before, after):
                     stats["level"] += 1
                     stats["xp"] = 0
             bot.save_data()
-
-# --- 1. أمر مراد (أحمر فاقع) ---
-@bot.tree.command(name="mrad", description="عرض أو تحويل رصيد مراد")
-@app_commands.describe(user="العضو المراد التحويل له", amount="المبلغ المراد تحويله")
-async def mrad(interaction: discord.Interaction, user: discord.Member = None, amount: int = None):
-    MY_ID = 1371432836946726934 
     
-    # 1. حالة عرض الرصيد فقط
-    if amount is None:
-        target = user or interaction.user
-        s = get_stats(target.id)
-        embed = discord.Embed(description=f"💰 رصيد **{target.mention}** هو: `{s['mrad']}` مراد", color=0xff0000)
-        return await interaction.response.send_message(embed=embed)
-
-    # 2. إعداد البيانات
-    sender_id = interaction.user.id
-    receiver_id = user.id
-    sender_stats = get_stats(sender_id)
-    receiver_stats = get_stats(receiver_id)
-
-    # 3. التحقق من الشحن الذاتي للمطور
-    if sender_id == receiver_id:
-        if sender_id == MY_ID:
-            receiver_stats["mrad"] += amount
-            bot.save_data()
-            return await interaction.response.send_message(f"✅ أهلاً مطورنا، تم إضافة `{amount}` لرصيدك بنجاح!")
-        else:
-            return await interaction.response.send_message("❌ لا يمكنك التحويل لنفسك!", ephemeral=True)
-
-    # 4. فحص رصيد المستخدم العادي
-    if sender_id != MY_ID and sender_stats["mrad"] < amount:
-        return await interaction.response.send_message("❌ رصيدك لا يكفي لإتمام هذه العملية!", ephemeral=True)
-
-    if amount <= 0:
-        return await interaction.response.send_message("❌ يجب أن يكون المبلغ أكبر من صفر!", ephemeral=True)
-
-    # 5. نظام الكابتشا (الصورة) للتحويل بين الأشخاص
-    captcha_text = str(random.randint(1111, 9999))
-    captcha_file = discord.File(create_captcha_image(captcha_text), filename="captcha.png")
-
-    embed_captcha = discord.Embed(
-        title="🛡️ تحقق الأمان", 
-        description=f"اكتب الأرقام الظاهرة في الصورة للتأكيد:\nلتحويل `{amount}` إلى {user.mention}", 
-        color=0xff0000
-    )
-    embed_captcha.set_image(url="attachment://captcha.png")
-
-    await interaction.response.send_message(file=captcha_file, embed=embed_captcha)
-
-    def check(m): 
-        return m.author == interaction.user and m.channel == interaction.channel
-        
-    try:
-        msg_res = await bot.wait_for('message', check=check, timeout=30.0)
-        if msg_res.content == captcha_text:
-            await msg_res.delete()
-            await interaction.delete_original_response()
-            
-            # تنفيذ العملية (المطور لا ينقص رصيده)
-            if sender_id != MY_ID:
-                sender_stats["mrad"] -= amount
-            
-            receiver_stats["mrad"] += amount
-            bot.save_data()
-            
-            await interaction.followup.send(f"✅ تم تحويل `{amount}` إلى {user.mention} بنجاح.")
-        else:
-            await msg_res.delete()
-            await interaction.followup.send("❌ الرقم غير صحيح، تم إلغاء العملية.", ephemeral=True)
-            
-    except TimeoutError:
-        await interaction.followup.send("⚠️ انتهى الوقت، تم إلغاء عملية التحويل.")
-
 # --- 3. أمر الأفاتار (أحمر فاقع) ---
 @bot.tree.command(name="avatar", description="عرض صورة الحساب")
 async def avatar(interaction: discord.Interaction, member: discord.Member = None):
