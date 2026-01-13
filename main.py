@@ -182,9 +182,6 @@ async def on_voice_state_update(member, before, after):
                     stats["xp"] = 0
             bot.save_data()
 
-@bot.command()
-async def ping(ctx): await ctx.send(f"🏓 Pong! `{round(bot.latency * 1000)}ms`")
-
 # --- أمر الترتيب (TOP) المطور والشامل ---
 @bot.tree.command(name="top", description="عرض الترتيب العام أو ترتيب عضو معين مع السياق")
 @app_commands.describe(
