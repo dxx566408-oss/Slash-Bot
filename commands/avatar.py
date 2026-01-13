@@ -1,6 +1,7 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
+from utils.settings_logic import load_settings # أضفنا هذا السطر للربط باللوحة
 
 class AvatarCog(commands.Cog):
     def __init__(self, bot):
@@ -9,23 +10,24 @@ class AvatarCog(commands.Cog):
     @app_commands.command(name="avatar", description="عرض الصورة الشخصية لك أو لعضو آخر")
     @app_commands.describe(member="العضو الذي تريد رؤية صورته")
     async def avatar(self, interaction: discord.Interaction, member: discord.Member = None):
-        # إذا لم يتم اختيار عضو، نعرض صورة الشخص الذي استخدم الأمر
+        # --- التحقق من لوحة التحكم ---
+        settings = load_settings()
+        if not settings.get("avatar", {}).get("enabled", True):
+            return await interaction.response.send_message("❌ هذا الأمر معطل حالياً من قبل الإدارة.", ephemeral=True)
+        # ---------------------------
+
         target = member or interaction.user
         
-        # إنشاء الـ Embed لعرض الصورة بشكل احترافي
         embed = discord.Embed(
             title=f"🖼️ صورة {target.display_name}",
-            color=0xff0000 # اللون الأحمر الذي تفضله
+            description=f"🔗 [رابط مباشر للتحميل]({target.display_avatar.url})",
+            color=0xff0000 
         )
         
-        # وضع رابط الصورة في الـ Embed
         embed.set_image(url=target.display_avatar.url)
-        
-        # إضافة روابط لتحميل الصورة بجودات مختلفة (اختياري)
-        embed.description = f"[رابط مباشر للتحميل]({target.display_avatar.url})"
+        embed.set_footer(text=f"طلب بواسطة: {interaction.user.name}", icon_url=interaction.user.display_avatar.url)
         
         await interaction.response.send_message(embed=embed)
 
-# دالة الربط مع الملف الأساسي
 async def setup(bot):
     await bot.add_cog(AvatarCog(bot))
