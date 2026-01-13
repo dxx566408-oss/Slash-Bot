@@ -192,62 +192,6 @@ async def id_info(interaction: discord.Interaction, member: discord.Member = Non
     embed.set_thumbnail(url=target.display_avatar.url)
     await interaction.response.send_message(embed=embed)
 
-# --- 5. أمر السيرفر (أحمر فاقع) ---
-@bot.tree.command(name="server", description="عرض معلومات السيرفر بالتفصيل")
-async def server_info(interaction: discord.Interaction):
-    guild = interaction.guild
-    
-    # حساب الإحصائيات
-    total_members = guild.member_count
-    bot_count = len([m for m in guild.members if m.bot])
-    human_count = total_members - bot_count
-    
-    # تاريخ إنشاء السيرفر
-    created_ts = int(guild.created_at.timestamp())
-    
-    # إنشاء الإيمبد بتنسيق يشبه الصورة
-    embed = discord.Embed(color=0x2b2d31) # لون داكن رسمي
-    if guild.icon:
-        embed.set_thumbnail(url=guild.icon.url)
-    
-    # السطر الأول: المالك وتاريخ الإنشاء والآيدي (باستخدام المنشن والأيقونات)
-    embed.add_field(
-        name="", 
-        value=f"👑 **مملوك بواسطة**\n{guild.owner.mention}", 
-        inline=True
-    )
-    embed.add_field(
-        name="", 
-        value=f"📅 **تاريخ الانشاء**\n<t:{created_ts}:D>\n**<t:{created_ts}:R>**", 
-        inline=True
-    )
-    embed.add_field(
-        name="", 
-        value=f"🆔 **ايدي السيرفر**\n`{guild.id}`", 
-        inline=True
-    )
-
-    # السطر الثاني: الأعضاء بالتفصيل
-    embed.add_field(
-        name="", 
-        value=f"👥 **الأعضاء ({total_members})**\nالاعضاء: `{human_count}`\nالبوتات: `{bot_count}`", 
-        inline=True
-    )
-
-    # السطر الثالث: الرومات (إحصائية إضافية لتعبئة الشكل)
-    embed.add_field(
-        name="", 
-        value=f"💬 **الرومات ({len(guild.channels)})**\nكتابي: `{len(guild.text_channels)}` | صوتي: `{len(guild.voice_channels)}`", 
-        inline=True
-    )
-
-    # السطر الأخير: تعزيز السيرفر
-    embed.add_field(
-        name="", 
-        value=f"✨ **التعزيزات**\nعدد البوستات: `{guild.premium_subscription_count}`", 
-        inline=True
-    )
-
     await interaction.response.send_message(embed=embed)
 # --- 6. أمر الأسماء (أحمر فاقع) ---
 @bot.tree.command(name="name", description="عرض جميع أسماء العضو بالتفصيل")
