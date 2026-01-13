@@ -16,88 +16,79 @@
             align-items: center;
             justify-content: center;
             margin: 0;
-            overflow: hidden;
-        }
-
-        /* خلفية متحركة بسيطة */
-        .background-animate {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle at center, #1a1c1e 0%, #08090a 100%);
-            z-index: -1;
         }
 
         .main-card {
             text-align: center;
-            padding: 40px;
+            padding: 50px;
             background: rgba(255, 255, 255, 0.03);
-            border-radius: 20px;
-            backdrop-filter: blur(10px);
+            border-radius: 30px;
+            backdrop-filter: blur(15px);
             border: 1px solid rgba(255, 255, 255, 0.1);
             width: 90%;
-            max-width: 600px;
+            max-width: 550px;
         }
 
         .bot-logo {
-            width: 120px;
-            height: 120px;
+            width: 130px;
+            height: 130px;
             border-radius: 50%;
-            border: 3px solid #ff0000;
-            margin-bottom: 20px;
-            box-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
+            border: 4px solid #ff0000;
+            margin-bottom: 25px;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.4);
         }
 
-        h1 { font-weight: 800; font-size: 2.5rem; margin-bottom: 10px; }
-        p { color: #b5bac1; margin-bottom: 30px; font-size: 1.1rem; }
+        h1 { font-weight: 850; font-size: 2.8rem; margin-bottom: 15px; letter-spacing: -1px; }
+        p { color: #b5bac1; margin-bottom: 35px; font-size: 1.2rem; line-height: 1.6; }
+
+        .btn-group-custom { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
 
         .btn-custom {
-            padding: 12px 30px;
+            padding: 14px 35px;
             font-weight: 600;
-            border-radius: 10px;
+            border-radius: 12px;
             transition: 0.3s;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            margin: 5px;
             text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.1rem;
         }
 
-        .btn-invite {
-            background-color: #ff0000;
-            color: white;
-        }
-        .btn-invite:hover { background-color: #cc0000; transform: translateY(-3px); color: white; }
+        .btn-invite { background-color: #ff0000; color: white; border: none; }
+        .btn-invite:hover { background-color: #d10000; transform: translateY(-4px); color: white; box-shadow: 0 10px 20px rgba(255, 0, 0, 0.2); }
 
-        .btn-dashboard {
-            background-color: transparent;
-            color: white;
-            border: 2px solid #4e5058;
-        }
-        .btn-dashboard:hover { background-color: #4e5058; transform: translateY(-3px); color: white; }
+        .btn-dashboard { background-color: transparent; color: white; border: 2px solid #4e5058; }
+        .btn-dashboard:hover { background-color: #4e5058; transform: translateY(-4px); color: white; }
 
-        .status-dot {
-            height: 10px; width: 10px; background-color: #23a559;
-            border-radius: 50%; display: inline-block; margin-left: 5px;
+        .status-badge {
+            background: rgba(35, 165, 89, 0.2);
+            color: #23a559;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            display: inline-block;
         }
     </style>
 </head>
 <body>
 
-    <div class="background-animate"></div>
-
-    <div class="main-card shadow-lg">
+    <div class="main-card shadow-2xl">
+        <div class="status-badge">● متصل الآن</div>
+        <br>
         <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Herminia" alt="Bot Logo" class="bot-logo">
         
-        <h1>هيرمينيا بوت <span class="status-dot"></span></h1>
-        <p>البوت المتكامل لإدارة سيرفرك، اقتصاد، حماية، ونظام ليفلات متقدم.</p>
+        <h1>هيرمينيا بوت</h1>
+        <p>عزز سيرفرك بأقوى نظام حماية، نظام اقتصاد متطور، ولوحة تحكم سهلة الاستخدام.</p>
 
-        <div class="d-flex flex-wrap justify-content-center">
-            <a href="ضع_رابط_الدعوة_الخاص_ببوتك_هنا" target="_blank" class="btn-custom btn-invite">
+        <div class="btn-group-custom">
+            <a href="رابط_دعوة_بوتك_هنا" target="_blank" class="btn-custom btn-invite">
                 <i class="fab fa-discord"></i> دعوة البوت
             </a>
 
             <a href="/dashboard" class="btn-custom btn-dashboard">
-                <i class="fas fa-sliders"></i> لوحة التحكم
+                <i class="fas fa-chart-line"></i> لوحة التحكم
             </a>
         </div>
     </div>
