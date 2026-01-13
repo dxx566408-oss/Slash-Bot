@@ -3,31 +3,35 @@ import random
 from PIL import Image, ImageDraw, ImageFont
 
 def create_captcha_image(text):
-    """
-    توليد صورة كابتشا تحتوي على نص مشوش لمنع البوتات.
-    """
-    # 1. إنشاء خلفية الصورة (لون داكن يتناسب مع ديسكورد)
-    width, height = 170, 70
-    background_color = (43, 45, 49) # لون رومات ديسكورد
+    # 1. إعدادات الصورة
+    width, height = 200, 80 # كبرنا العرض قليلاً للأمان
+    background_color = (43, 45, 49) 
     img = Image.new('RGB', (width, height), color=background_color)
     d = ImageDraw.Draw(img)
 
-    # 2. رسم النص (باللون الأحمر كما في كودك الأصلي)
-    # ملاحظة: إذا أردت استخدام خط معين، يمكنك تحميله هنا، حالياً سيستخدم الخط الافتراضي
-    d.text((55, 25), text, fill=(255, 0, 0))
+    # 2. محاولة تحميل خط أوضح
+    try:
+        # سنحاول استخدام خط النظام الافتراضي بحجم كبير
+        font = ImageFont.load_default() 
+        # ملاحظة: يفضل مستقبلاً وضع ملف خط .ttf في مجلد utils واستدعاؤه هنا
+    except:
+        font = None
 
-    # 3. إضافة تشويش (خطوط عشوائية) لزيادة الصعوبة
-    for i in range(10):
-        start_point = (random.randint(0, width), random.randint(0, height))
-        end_point = (random.randint(0, width), random.randint(0, height))
-        line_color = (random.randint(50, 150), random.randint(50, 150), random.randint(50, 150))
-        d.line([start_point, end_point], fill=line_color, width=1)
+    # 3. رسم النص (توسيط النص بشكل أفضل)
+    # رسم النص باللون الأحمر الصارخ كما تفضل
+    d.text((60, 25), text, fill=(255, 0, 0), font=font)
 
-    # 4. إضافة نقاط عشوائية (Noise)
-    for i in range(100):
-        d.point((random.randint(0, width), random.randint(0, height)), fill=(200, 200, 200))
+    # 4. إضافة تشويش قوي (خطوط)
+    for i in range(15):
+        start = (random.randint(0, width), random.randint(0, height))
+        end = (random.randint(0, width), random.randint(0, height))
+        d.line([start, end], fill=(100, 100, 100), width=1)
 
-    # 5. حفظ الصورة في ذاكرة مؤقتة (Buffer) بدلاً من القرص الصلب
+    # 5. إضافة نقاط Noise
+    for i in range(250): # زيادة النقاط لتعقيد المهمة على البوتات الأخرى
+        d.point((random.randint(0, width), random.randint(0, height)), fill=(150, 150, 150))
+
+    # 6. الحفظ في الذاكرة
     img_byte_arr = io.BytesIO()
     img.save(img_byte_arr, format='PNG')
     img_byte_arr.seek(0)
