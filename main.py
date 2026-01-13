@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify
 from threading import Thread
 
-# --- إعدادات الأوامر الافتراضية ---
+# --- إعدادات الأوامر ---
 DEFAULT_SETTINGS = {
     "moveme": {"enabled": True, "description": "ينقلك إلى روم صوتي."},
     "profile": {"enabled": True, "description": "عرض بطاقة التعريف الشخصية."},
@@ -30,12 +30,12 @@ app = Flask(__name__, template_folder='templates')
 
 @app.route('/')
 def home():
-    # تعرض صفحة الدعوة والترحيب (index.html)
+    # صفحة الواجهة الرئيسية (index.html)
     return render_template('index.html')
 
 @app.route('/dashboard')
 def dashboard():
-    # تعرض صفحة التحكم بالأوامر (dashboard.html)
+    # صفحة لوحة التحكم (dashboard.html)
     settings = get_settings()
     return render_template('dashboard.html', 
                            settings=settings, 
@@ -51,6 +51,16 @@ def toggle_command():
         with open('settings.json', 'w') as f: json.dump(settings, f, indent=4)
         return jsonify({"status": "success", "new_state": settings[cmd_name]['enabled']})
     return jsonify({"status": "error"}), 400
+
+# --- تشغيل Flask في Thread منفصل ---
+def run():
+    # استخدام المنفذ الذي يطلبه Render تلقائياً
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
 
 # --- دالة صنع صورة الكابتشا ---
 def create_captcha_image(text):
@@ -544,4 +554,23 @@ async def sync_history(interaction: discord.Interaction, limit: int = 1000):
     bot.save_data()
     await interaction.followup.send(f"✅ تمت المزامنة! تم جرد `{count}` رسالة قديمة بنجاح.")
 
-bot.run(os.getenv("DISCORD_TOKEN"))
+# --- تشغيل Flask و Discord Bot معاً ---
+
+def run():
+    # Render يتطلب ربط المنفذ بشكل ديناميكي
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
+
+if __name__ == "__main__":
+    keep_alive() # تشغيل الموقع في الخلفية
+    
+    # جلب التوكن من إعدادات Render السرية وليس من الكود
+    token = os.environ.get("DISCORD_TOKEN") 
+    if token:
+        bot.run(token)
+    else:
+        print("❌ خطأ: لم يتم العثور على DISCORD_TOKEN في إعدادات Render")
