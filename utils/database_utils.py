@@ -3,6 +3,16 @@ import os
 
 DATA_FILE = "database.json"
 
+def load_from_json():
+    """تحميل البيانات من الملف عند تشغيل البوت"""
+    if os.path.exists(DATA_FILE):
+        try:
+            with open(DATA_FILE, "r") as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
 def get_stats(users_data, uid, gid=None):
     """جلب بيانات العضو وتجهيزها إذا كانت غير موجودة"""
     uid = str(uid)
@@ -33,6 +43,9 @@ def get_stats(users_data, uid, gid=None):
     return global_stats
 
 def save_to_json(data):
-    """حفظ البيانات في ملف database.json"""
-    with open(DATA_FILE, "w") as f:
-        json.dump(data, f, indent=4)
+    """حفظ البيانات في ملف database.json بشكل آمن"""
+    try:
+        with open(DATA_FILE, "w") as f:
+            json.dump(data, f, indent=4)
+    except Exception as e:
+        print(f"Error saving database: {e}")
