@@ -182,15 +182,6 @@ async def on_voice_state_update(member, before, after):
                     stats["xp"] = 0
             bot.save_data()
     
-# --- 3. أمر الأفاتار (أحمر فاقع) ---
-@bot.tree.command(name="avatar", description="عرض صورة الحساب")
-async def avatar(interaction: discord.Interaction, member: discord.Member = None):
-    target = member or interaction.user
-    avatar_url = target.display_avatar.with_size(1024).url
-    embed = discord.Embed(title=f"صورة {target.name}", url=avatar_url, color=0xff0000)
-    embed.set_image(url=avatar_url)
-    await interaction.response.send_message(embed=embed)
-
 # --- 4. أمر الآيدي (أحمر فاقع) ---
 @bot.tree.command(name="id", description="عرض الآيدي")
 async def id_info(interaction: discord.Interaction, member: discord.Member = None):
