@@ -6,23 +6,26 @@ from datetime import datetime
 from flask import Flask, render_template, request, jsonify
 from threading import Thread
 
-# --- استيراد الملحقات الجديدة ---
+# --- استيراد الملحقات ---
 from utils.database_utils import get_stats, save_to_json
 from utils.settings_logic import load_settings, update_setting, DEVELOPER_ID
 
-# --- إعدادات البوت الأساسية ---
 class HermenyaBot(commands.Bot):
     def __init__(self):
         intents = discord.Intents.all()
+        # إضافة اسم المستخدم كـ "العقل"
         super().__init__(command_prefix="!", intents=intents)
         self.data_file = "database.json"
         
-        # التأكد من وجود ملف قاعدة البيانات
+        # تحميل البيانات بأمان
         if not os.path.exists(self.data_file):
             with open(self.data_file, "w") as f: json.dump({}, f)
             
         with open(self.data_file, "r") as f: 
-            self.users_data = json.load(f)
+            try:
+                self.users_data = json.load(f)
+            except:
+                self.users_data = {}
             
         self.voice_times = {}
 
@@ -30,21 +33,24 @@ class HermenyaBot(commands.Bot):
         save_to_json(self.users_data)
 
     async def setup_hook(self):
-        # تحميل الملفات من مجلد الأوامر تلقائياً
+        # تحميل الملفات من مجلد الأوامر
+        if not os.path.exists('./commands'):
+            os.makedirs('./commands')
+            
         for filename in os.listdir('./commands'):
             if filename.endswith('.py'):
                 try:
                     await self.load_extension(f'commands.{filename[:-3]}')
-                    print(f'✅ تم تحميل: {filename}')
+                    print(f'✅ Loaded: {filename}')
                 except Exception as e:
-                    print(f'❌ خطأ في تحميل {filename}: {e}')
+                    print(f'❌ Failed to load {filename}: {e}')
         
         await self.tree.sync()
-        print("✅ تم مزامنة أوامر السلاش بنجاح")
+        print("✅ Slash Commands Synced")
 
 bot = HermenyaBot()
 
-# --- إعدادات Flask للوحة التحكم ---
+# --- Flask Dashboard ---
 app = Flask(__name__, template_folder='templates')
 
 @app.route('/')
@@ -62,12 +68,14 @@ def dashboard():
 def toggle_command():
     data = request.json
     cmd_name = data.get('command')
-    # استخدام الدالة من الملحقات
-    if update_setting(cmd_name, not load_settings()[cmd_name]['enabled']):
-        return jsonify({"status": "success"})
+    current_settings = load_settings()
+    if cmd_name in current_settings:
+        new_status = not current_settings[cmd_name]['enabled']
+        if update_setting(cmd_name, new_status):
+            return jsonify({"status": "success", "new_status": new_status})
     return jsonify({"status": "error"}), 400
 
-# --- أحداث البوت (اللفل والنشاط) ---
+# --- الأحداث الأساسية ---
 @bot.event
 async def on_message(message):
     if message.author.bot or not message.guild: return
@@ -75,13 +83,10 @@ async def on_message(message):
     uid, gid = str(message.author.id), str(message.guild.id)
     today = datetime.now().strftime("%Y-%m-%d")
     
-    # استخدام get_stats المستوردة من الملحقات
     stats = get_stats(bot.users_data, uid, gid)
     stats["msg_count"] += 1
     
-    if "daily_activity" not in stats: stats["daily_activity"] = {}
-    stats["daily_activity"][today] = stats["daily_activity"].get(today, 0) + 1
-    
+    # نظام الـ XP (كل 25 رسالة = 1 XP)
     if stats["msg_count"] % 25 == 0:
         stats["xp"] += 1
         if stats["xp"] >= 20:
@@ -95,36 +100,40 @@ async def on_message(message):
 async def on_voice_state_update(member, before, after):
     if member.bot or not member.guild: return
     uid, gid = str(member.id), str(member.guild.id)
-    today = datetime.now().strftime("%Y-%m-%d")
     
+    # دخول الروم
     if before.channel is None and after.channel is not None:
         bot.voice_times[member.id] = time.time()
+        
+    # خروج من الروم
     elif before.channel is not None and after.channel is None:
         if member.id in bot.voice_times:
             duration = int(time.time() - bot.voice_times.pop(member.id))
             stats = get_stats(bot.users_data, uid, gid)
             stats["voice_seconds"] += duration 
             
-            if "daily_voice" not in stats: stats["daily_voice"] = {}
-            stats["daily_voice"][today] = stats["daily_voice"].get(today, 0) + duration
-            
-            while stats["voice_seconds"] >= 300:
+            # لفل أب صوتي (كل 5 دقائق = 1 XP)
+            # نستخدم عملية القسمة لمعرفة كم XP يستحق دون المساس بالثواني الكلية
+            total_earned_xp = stats["voice_seconds"] // 300
+            if total_earned_xp > (stats["level"] * 5): # معادلة بسيطة للتطوير
                 stats["xp"] += 1
-                stats["voice_seconds"] -= 300
                 if stats["xp"] >= 20:
                     stats["level"] += 1
                     stats["xp"] = 0
             bot.save_data()
 
-# --- تشغيل Flask و Discord Bot ---
+# --- التشغيل السحابي ---
 def run():
     port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
 
 if __name__ == "__main__":
-    Thread(target=run).start()
+    t = Thread(target=run)
+    t.start()
+    
+    # توكن البوت (سيتم وضعه في إعدادات Render)
     token = os.environ.get("DISCORD_TOKEN")
     if token:
         bot.run(token)
     else:
-        print("❌ خطأ: لم يتم العثور على التوكن!")
+        print("❌ CRITICAL ERROR: DISCORD_TOKEN NOT FOUND!")
