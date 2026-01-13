@@ -1,17 +1,13 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-import os
-import json
-import time
-import random
-import io
-from PIL import Image, ImageDraw, ImageFont
-from datetime import datetime, timedelta
+import os, json, time, random, io
+from PIL import Image, ImageDraw
+from datetime import datetime
 from flask import Flask, render_template, request, jsonify
 from threading import Thread
 
-# --- إعدادات الأوامر ---
+# إعدادات الأوامر
 DEFAULT_SETTINGS = {
     "moveme": {"enabled": True, "description": "ينقلك إلى روم صوتي."},
     "profile": {"enabled": True, "description": "عرض بطاقة التعريف الشخصية."},
@@ -25,18 +21,53 @@ def get_settings():
         with open('settings.json', 'w') as f: json.dump(DEFAULT_SETTINGS, f, indent=4)
     with open('settings.json', 'r') as f: return json.load(f)
 
+# --- إعداد محرك البوت (SlashBot) ---
+
+class SlashBot(commands.Bot):
+    def __init__(self):
+        # تفعيل جميع الحواس (Intents) للبوت ليتمكن من قراءة الرسائل والفويس
+        intents = discord.Intents.all()
+        super().__init__(command_prefix="!", intents=intents)
+        
+        # إعداد قاعدة البيانات
+        self.data_file = "database.json"
+        
+        # التأكد من وجود ملف قاعدة البيانات عند التشغيل لتجنب أخطاء القراءة
+        if not os.path.exists(self.data_file):
+            with open(self.data_file, "w") as f: 
+                json.dump({}, f)
+                print("📁 تم إنشاء ملف database.json جديد")
+        
+        # تحميل بيانات المستخدمين
+        with open(self.data_file, "r") as f: 
+            self.users_data = json.load(f)
+            
+        self.voice_times = {} # لتخزين وقت دخول الأعضاء للفويس مؤقتاً
+
+    # دالة حفظ البيانات (تستدعيها عند كل تغيير في الرصيد أو الخبرة)
+    def save_data(self):
+        with open(self.data_file, "w") as f: 
+            json.dump(self.users_data, f, indent=4)
+
+    # دالة ربط أوامر السلاش (/) مع ديسكورد عند تشغيل البوت
+    async def setup_hook(self):
+        await self.tree.sync()
+        print(f"✅ تم تسجيل أوامر السلاش لبوت: {self.user}")
+
+# إنشاء الكائن الأساسي للبوت
+bot = SlashBot()
+
 # --- إعدادات Flask والمسارات ---
 app = Flask(__name__, template_folder='templates')
 
 @app.route('/')
 def home():
-    # صفحة الواجهة الرئيسية (index.html)
     return render_template('index.html')
 
 @app.route('/dashboard')
 def dashboard():
-    # صفحة لوحة التحكم (dashboard.html)
     settings = get_settings()
+    # الآن 'bot' معرف في الخطوة السابقة، لذا لن يظهر خطأ
     return render_template('dashboard.html', 
                            settings=settings, 
                            total_users=len(bot.users_data))
@@ -49,7 +80,7 @@ def toggle_command():
     if cmd_name in settings:
         settings[cmd_name]['enabled'] = not settings[cmd_name]['enabled']
         with open('settings.json', 'w') as f: json.dump(settings, f, indent=4)
-        return jsonify({"status": "success", "new_state": settings[cmd_name]['enabled']})
+        return jsonify({"status": "success"})
     return jsonify({"status": "error"}), 400
 
 # --- تشغيل Flask في Thread منفصل ---
