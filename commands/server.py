@@ -2,34 +2,63 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-class ServerCog(commands.Cog):
+class ServerInfo(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="server", description="عرض معلومات السيرفر الحالية")
+    @app_commands.command(name="server", description="عرض معلومات السيرفر بالتفصيل")
     async def server_info(self, interaction: discord.Interaction):
         guild = interaction.guild
         
-        # تجهيز المعلومات
-        owner = guild.owner.mention if guild.owner else "غير معروف"
-        created_at = guild.created_at.strftime("%Y/%m/%d")
-        member_count = guild.member_count
-        boost_count = guild.premium_subscription_count
+        # حساب الإحصائيات
+        total_members = guild.member_count
+        bot_count = len([m for m in guild.members if m.bot])
+        human_count = total_members - bot_count
         
-        embed = discord.Embed(title=f"🏰 معلومات سيرفر: {guild.name}", color=0xff0000)
+        # تاريخ إنشاء السيرفر وتحويله لتنسيق ديسكورد الزمني
+        created_ts = int(guild.created_at.timestamp())
         
-        # وضع أيقونة السيرفر إذا وجدت
+        # إنشاء الإيمبد
+        embed = discord.Embed(color=0x2b2d31) 
         if guild.icon:
             embed.set_thumbnail(url=guild.icon.url)
         
-        embed.add_field(name="👑 صاحب السيرفر", value=owner, inline=True)
-        embed.add_field(name="🆔 آيدي السيرفر", value=f"`{guild.id}`", inline=True)
-        embed.add_field(name="📅 تاريخ الإنشاء", value=f"`{created_at}`", inline=True)
-        embed.add_field(name="👥 عدد الأعضاء", value=f"`{member_count}`", inline=True)
-        embed.add_field(name="💎 عدد البوستات", value=f"`{boost_count}`", inline=True)
-        embed.add_field(name="💬 عدد الرومات", value=f"`{len(guild.channels)}`", inline=True)
+        # الحقول بتنسيقك الخاص
+        embed.add_field(
+            name="", 
+            value=f"👑 **مملوك بواسطة**\n{guild.owner.mention}", 
+            inline=True
+        )
+        embed.add_field(
+            name="", 
+            value=f"📅 **تاريخ الانشاء**\n<t:{created_ts}:D>\n**<t:{created_ts}:R>**", 
+            inline=True
+        )
+        embed.add_field(
+            name="", 
+            value=f"🆔 **ايدي السيرفر**\n`{guild.id}`", 
+            inline=True
+        )
+
+        embed.add_field(
+            name="", 
+            value=f"👥 **الأعضاء ({total_members})**\nالاعضاء: `{human_count}`\nالبوتات: `{bot_count}`", 
+            inline=True
+        )
+
+        embed.add_field(
+            name="", 
+            value=f"💬 **الرومات ({len(guild.channels)})**\nكتابي: `{len(guild.text_channels)}` | صوتي: `{len(guild.voice_channels)}`", 
+            inline=True
+        )
+
+        embed.add_field(
+            name="", 
+            value=f"✨ **التعزيزات**\nعدد البوستات: `{guild.premium_subscription_count}`", 
+            inline=True
+        )
         
         await interaction.response.send_message(embed=embed)
 
 async def setup(bot):
-    await bot.add_cog(ServerCog(bot))
+    await bot.add_cog(ServerInfo(bot))
