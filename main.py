@@ -11,10 +11,7 @@ from datetime import datetime, timedelta
 from flask import Flask, render_template, request, jsonify
 from threading import Thread
 
-# --- إعدادات Flask والموقع ---
-app = Flask(__name__, template_folder='templates')
-
-# --- إعدادات الأوامر (تأكد أنها قبل الـ Routes) ---
+# --- إعدادات الأوامر الافتراضية ---
 DEFAULT_SETTINGS = {
     "moveme": {"enabled": True, "description": "ينقلك إلى روم صوتي."},
     "profile": {"enabled": True, "description": "عرض بطاقة التعريف الشخصية."},
@@ -28,47 +25,22 @@ def get_settings():
         with open('settings.json', 'w') as f: json.dump(DEFAULT_SETTINGS, f, indent=4)
     with open('settings.json', 'r') as f: return json.load(f)
 
-# --- مسارات الموقع (Flask Routes) ---
+# --- إعدادات Flask والمسارات ---
+app = Flask(__name__, template_folder='templates')
 
 @app.route('/')
 def home():
-    # هذه صفحة الواجهة (التي فيها زر الدعوة وزر الداش بورد)
+    # تعرض صفحة الدعوة والترحيب (index.html)
     return render_template('index.html')
 
 @app.route('/dashboard')
 def dashboard():
-    # هذه صفحة التحكم بالأوامر
+    # تعرض صفحة التحكم بالأوامر (dashboard.html)
     settings = get_settings()
     return render_template('dashboard.html', 
                            settings=settings, 
                            total_users=len(bot.users_data))
 
-@app.route('/toggle_command', methods=['POST'])
-def toggle_command():
-    data = request.json
-    cmd_name = data.get('command')
-    settings = get_settings()
-    if cmd_name in settings:
-        settings[cmd_name]['enabled'] = not settings[cmd_name]['enabled']
-        with open('settings.json', 'w') as f: json.dump(settings, f, indent=4)
-        return jsonify({"status": "success", "new_state": settings[cmd_name]['enabled']})
-    return jsonify({"status": "error"}), 400
-
-# مسار تحديث الرصيد (موجود مسبقاً)
-@app.route('/update_balance', methods=['POST'])
-def update_balance():
-    data = request.json
-    uid = str(data.get('uid'))
-    new_mrad = int(data.get('mrad'))
-    
-    if uid in bot.users_data and bot.users_data[uid]:
-        gid = list(bot.users_data[uid].keys())[0]
-        bot.users_data[uid][gid]['mrad'] = new_mrad
-        bot.save_data()
-        return jsonify({"status": "success"})
-    return jsonify({"status": "error", "message": "User not found"}), 404
-
-# مسار تفعيل وتعطيل الأوامر (مثل بروبوت)
 @app.route('/toggle_command', methods=['POST'])
 def toggle_command():
     data = request.json
