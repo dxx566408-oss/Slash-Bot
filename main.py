@@ -386,8 +386,6 @@ async def user_info(interaction: discord.Interaction, member: discord.Member = N
 @bot.command()
 async def ping(ctx): await ctx.send(f"🏓 Pong! `{round(bot.latency * 1000)}ms`")
 
-keep_alive()
-
 # --- أمر الترتيب (TOP) المطور والشامل ---
 @bot.tree.command(name="top", description="عرض الترتيب العام أو ترتيب عضو معين مع السياق")
 @app_commands.describe(
