@@ -14,6 +14,19 @@ from threading import Thread
 # --- إعدادات Flask والموقع ---
 app = Flask(__name__, template_folder='templates')
 
+@app.route('/')
+def home():
+    # هذه صفحة الواجهة الرئيسية (الدعوة)
+    return render_template('index.html')
+
+@app.route('/dashboard')
+def dashboard():
+    # هذه صفحة لوحة التحكم (التي تعرض الأوامر والتعديلات)
+    settings = get_settings()
+    return render_template('dashboard.html', 
+                           settings=settings, 
+                           total_users=len(bot.users_data))
+
 # 1. إعدادات الأوامر الافتراضية (للتحكم مثل بروبوت)
 DEFAULT_SETTINGS = {
     "moveme": {"enabled": True, "description": "ينقلك إلى روم صوتي."},
