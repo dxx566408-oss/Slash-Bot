@@ -14,41 +14,45 @@ from threading import Thread
 # --- إعدادات Flask والموقع ---
 app = Flask(__name__, template_folder='templates')
 
-@app.route('/')
-def home():
-    # هذه صفحة الواجهة الرئيسية (الدعوة)
-    return render_template('index.html')
-
-@app.route('/dashboard')
-def dashboard():
-    # هذه صفحة لوحة التحكم (التي تعرض الأوامر والتعديلات)
-    settings = get_settings()
-    return render_template('dashboard.html', 
-                           settings=settings, 
-                           total_users=len(bot.users_data))
-
-# 1. إعدادات الأوامر الافتراضية (للتحكم مثل بروبوت)
+# --- إعدادات الأوامر (تأكد أنها قبل الـ Routes) ---
 DEFAULT_SETTINGS = {
     "moveme": {"enabled": True, "description": "ينقلك إلى روم صوتي."},
-    "profile": {"enabled": True, "description": "عرض بطاقة التعريف الشخصية العامة."},
-    "user": {"enabled": True, "description": "عرض معلومات الحساب وتاريخ التسجيل."},
-    "avatar": {"enabled": True, "description": "الحصول على الصورة الرمزية للمستخدم."},
-    "daily": {"enabled": True, "description": "الحصول على المكافأة اليومية."}
+    "profile": {"enabled": True, "description": "عرض بطاقة التعريف الشخصية."},
+    "user": {"enabled": True, "description": "عرض معلومات الحساب."},
+    "avatar": {"enabled": True, "description": "عرض الصورة الشخصية."},
+    "daily": {"enabled": True, "description": "المكافأة اليومية."}
 }
 
-# دالة لجلب إعدادات الأوامر من ملف منفصل
 def get_settings():
     if not os.path.exists('settings.json'):
         with open('settings.json', 'w') as f: json.dump(DEFAULT_SETTINGS, f, indent=4)
     with open('settings.json', 'r') as f: return json.load(f)
 
+# --- مسارات الموقع (Flask Routes) ---
+
 @app.route('/')
 def home():
+    # هذه صفحة الواجهة (التي فيها زر الدعوة وزر الداش بورد)
+    return render_template('index.html')
+
+@app.route('/dashboard')
+def dashboard():
+    # هذه صفحة التحكم بالأوامر
     settings = get_settings()
-    return render_template('index.html', 
-                           total_users=len(bot.users_data), 
-                           users_data=bot.users_data,
-                           settings=settings)
+    return render_template('dashboard.html', 
+                           settings=settings, 
+                           total_users=len(bot.users_data))
+
+@app.route('/toggle_command', methods=['POST'])
+def toggle_command():
+    data = request.json
+    cmd_name = data.get('command')
+    settings = get_settings()
+    if cmd_name in settings:
+        settings[cmd_name]['enabled'] = not settings[cmd_name]['enabled']
+        with open('settings.json', 'w') as f: json.dump(settings, f, indent=4)
+        return jsonify({"status": "success", "new_state": settings[cmd_name]['enabled']})
+    return jsonify({"status": "error"}), 400
 
 # مسار تحديث الرصيد (موجود مسبقاً)
 @app.route('/update_balance', methods=['POST'])
