@@ -182,19 +182,6 @@ async def on_voice_state_update(member, before, after):
                     stats["xp"] = 0
             bot.save_data()
 
-# --- 7. أمر اليوزر (أحمر فاقع) ---
-@bot.tree.command(name="user", description="عرض معلومات الحساب")
-async def user_info(interaction: discord.Interaction, member: discord.Member = None):
-    await interaction.response.defer()
-    target = member or interaction.user
-    created_ts = int(target.created_at.timestamp())
-    joined_ts = int(target.joined_at.timestamp())
-    embed = discord.Embed(title=f"👤 معلومات: {target.display_name}", color=0xff0000)
-    embed.set_thumbnail(url=target.display_avatar.url)
-    embed.add_field(name="🗓️ إنشاء الحساب", value=f"<t:{created_ts}:D> (<t:{created_ts}:R>)", inline=False)
-    embed.add_field(name="📥 دخول السيرفر", value=f"<t:{joined_ts}:D> (<t:{joined_ts}:R>)", inline=False)
-    await interaction.followup.send(embed=embed)
-
 @bot.command()
 async def ping(ctx): await ctx.send(f"🏓 Pong! `{round(bot.latency * 1000)}ms`")
 
