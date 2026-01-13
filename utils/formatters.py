@@ -7,17 +7,24 @@ def format_time(seconds):
     parts = []
     if hours > 0: parts.append(f"{hours} ساعة")
     if minutes > 0: parts.append(f"{minutes} دقيقة")
-    if secs > 0 or not parts: parts.append(f"{secs} ثانية")
+    # إظهار الثواني فقط إذا كانت الساعات صفر، لجعل النص أقصر وأجمل
+    if (secs > 0 and hours == 0) or not parts: 
+        parts.append(f"{secs} ثانية")
     
     return " و ".join(parts)
 
 def create_progress_bar(current, total, length=10):
-    """إنشاء شريط تقدم مرئي (مثلاً للـ XP)"""
+    """إنشاء شريط تقدم مرئي مع ضمان عدم تجاوز الطول المحدد"""
     if total <= 0: return "░" * length
-    full_count = int((current / total) * length)
+    # استخدام min لضمان أن الشريط لا يتمدد إذا زاد الـ XP عن المطلوب
+    progress = min(current / total, 1.0)
+    full_count = int(progress * length)
     empty_count = length - full_count
     return "█" * full_count + "░" * empty_count
 
 def format_number(number):
     """تنسيق الأرقام الكبيرة (مثلاً 1000 تصبح 1,000)"""
-    return "{:,}".format(number)
+    try:
+        return "{:,}".format(int(number))
+    except:
+        return str(number)
