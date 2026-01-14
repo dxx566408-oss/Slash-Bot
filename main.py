@@ -81,18 +81,14 @@ async def on_message(message):
     if message.author.bot or not message.guild: return
     
     uid, gid = str(message.author.id), str(message.guild.id)
-    today = datetime.now().strftime("%Y-%m-%d")
-    
     stats = get_stats(bot.users_data, uid, gid)
-    stats["msg_count"] += 1
     
-    # نظام الـ XP (كل 25 رسالة = 1 XP)
-    if stats["msg_count"] % 25 == 0:
-        stats["xp"] += 1
-        if stats["xp"] >= 20:
-            stats["level"] += 1
-            stats["xp"] = 0
-            
+    # السطر القديم (اتركه كما هو)
+    stats["msg_count"] += 1 
+    
+    # السطر الجديد المطلوب لكي يعمل أمر level
+    stats["ms"] = stats.get("ms", 0) + 1 
+    
     bot.save_data()
     await bot.process_commands(message)
 
