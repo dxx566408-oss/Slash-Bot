@@ -2,7 +2,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from utils.database_utils import get_stats
-from utils.settings_logic import load_settings, DEVELOPER_ID = 1371432836946726934
+from utils.settings_logic import load_settings, DEVELOPER_ID
 from utils.formatters import format_number
 import math
 
