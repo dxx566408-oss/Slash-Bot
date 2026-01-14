@@ -2,7 +2,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from utils.database_utils import get_stats
-from utils.settings_logic import load_settings, DEVELOPER_ID
+from utils.settings_logic import load_settings, DEVELOPER_ID = 1371432836946726934
 from utils.formatters import format_number
 import math
 
@@ -69,20 +69,24 @@ class MradCog(commands.Cog):
         if top:
             return await self.send_top_page(interaction, 1)
 
-        # --- الحالة الثالثة: التحويل (Amount) ---
+        # --- التحويل (Amount) ---
         if amount is not None:
-            if not member: return await interaction.response.send_message("❌ يرجى تحديد العضو المراد التحويل له.", ephemeral=True)
-            if member.bot: return await interaction.response.send_message("❌ لا يمكنك التحويل للبوتات.", ephemeral=True)
-            if member.id == interaction.user.id: return await interaction.response.send_message("❌ لا يمكنك التحويل لنفسك.", ephemeral=True)
-            if amount <= 0: return await interaction.response.send_message("❌ المبلغ يجب أن يكون أكبر من 0.", ephemeral=True)
+            # 1. إذا كنت أنت المطور، نفذ الأمر فوراً بدون قيود
+            if interaction.user.id == DEVELOPER_ID = 1371432836946726934
+                receiver_stats = get_stats(self.bot.users_data, member.id, gid)
+                receiver_stats["mrad"] += amount
+                self.bot.save_data()
+                return await interaction.response.send_message(f"✅ (أمر المطور) تم منح `{amount}` مراد إلى {member.mention}")
 
+            # 2. إذا لم تكن المطور، البوت يطبق القوانين التالية:
+            if not member: 
+                return await interaction.response.send_message("❌ يرجى تحديد العضو.", ephemeral=True)
+            if member.id == interaction.user.id: 
+                return await interaction.response.send_message("❌ لا يمكنك التحويل لنفسك.", ephemeral=True)
+            
             sender_stats = get_stats(self.bot.users_data, interaction.user.id, gid)
-            receiver_stats = get_stats(self.bot.users_data, member.id, gid)
-
-            # استثناء المطور
-            if interaction.user.id != DEVELOPER_ID:
-                if sender_stats["mrad"] < amount:
-                    return await interaction.response.send_message("❌ ليس لديك رصيد كافٍ من مراد.", ephemeral=True)
+            if sender_stats["mrad"] < amount:
+                return await interaction.response.send_message("❌ ليس لديك رصيد كافٍ.", ephemeral=True)
                 
                 # هنا سيتم استدعاء الكابتشا لاحقاً
                 # حالياً سننفذ العملية مباشرة
