@@ -103,11 +103,15 @@ class MradCog(commands.Cog):
         stats = get_stats(self.bot.users_data, target.id, gid)
         balance = format_number(stats.get("mrad", 0))
         
-        embed = discord.Embed(color=0xff0000)
-        embed.set_author(name=f"رصيد {target.display_name}", icon_url=target.display_avatar.url)
-        embed.description = f"💰 لديه: **{balance}** مراد"
-        await interaction.response.send_message(embed=embed)
+        # إذا كان العضو يطلب رصيد نفسه
+        if target.id == interaction.user.id:
+            msg = f"**ـ {target.name}, رصيد حسابك هو `${balance}`.** | :bank:"
+        
+        # إذا كان العضو يطلب رصيد شخص آخر
+        else:
+            msg = f"** رصيد {target.name} هو `${balance}`.** :credit_card:"
 
+        await interaction.response.send_message(content=msg)
 # دالة مساعدة لإرسال قائمة التوب مع الأزرار
     async def send_top_page(self, interaction, page):
         gid = str(interaction.guild.id)
