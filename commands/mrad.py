@@ -5,6 +5,8 @@ from utils.database_utils import get_stats
 from utils.settings_logic import load_settings, DEVELOPER_ID
 from utils.formatters import format_number
 import math
+from utils.captcha import generate_captcha
+import asyncio
 
 class MradCog(commands.Cog):
     def __init__(self, bot):
