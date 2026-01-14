@@ -1,38 +1,39 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-from utils.settings_logic import load_settings # الربط بلوحة التحكم
+from utils.settings_logic import load_settings
 
-class NicknameCog(commands.Cog):
+class NickmeCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="nickme", description="تغيير لقبك (الاسم المستعار) داخل هذا السيرفر")
-    @app_commands.describe(new_nickname="الاسم الجديد الذي تريده (اتركه فارغاً لإزالة اللقب)")
-    async def nickme(self, interaction: discord.Interaction, new_nickname: str = None):
-        # 1. التحقق من حالة الأمر في لوحة التحكم
+    @app_commands.command(name="nickme", description="تغيير اسمك المستعار (Nickname) داخل هذا السيرفر")
+    @app_commands.describe(new_nick="الاسم الجديد الذي تريد ظهوره للآخرين")
+    async def nickme(self, interaction: discord.Interaction, new_nick: str):
+        # 1. التحقق من لوحة التحكم
         settings = load_settings()
         if not settings.get("nickme", {}).get("enabled", True):
-            return await interaction.response.send_message("❌ هذا الأمر معطل حالياً من لوحة التحكم.", ephemeral=True)
+            return await interaction.response.send_message("❌ هذا الأمر معطل حالياً.", ephemeral=True)
 
+        # 2. التحقق من الصلاحيات (البوت يجب أن يكون له صلاحية Manage Nicknames)
+        if not interaction.guild.me.guild_permissions.manage_nicknames:
+            return await interaction.response.send_message("❌ ليس لدي صلاحية (إدارة الألقاب) للقيام بذلك.", ephemeral=True)
+
+        # 3. محاولة تغيير الاسم
         try:
-            # 2. محاولة تغيير اللقب
-            await interaction.user.edit(nick=new_nickname)
+            await interaction.user.edit(nick=new_nick)
             
-            if new_nickname:
-                await interaction.response.send_message(f"✅ تم تغيير لقبك بنجاح إلى: **{new_nickname}**", ephemeral=True)
-            else:
-                await interaction.response.send_message(f"✅ تم إعادة ضبط لقبك إلى الاسم الأصلي بنجاح.", ephemeral=True)
-                
-        except discord.Forbidden:
-            # رسالة واضحة في حال فشل الصلاحيات
-            await interaction.response.send_message(
-                "❌ **فشل التغيير!** البوت لا يملك صلاحية لتغيير اسمك.\n"
-                "💡 تأكد أن رتبة البوت أعلى من رتبتك في إعدادات السيرفر.", 
-                ephemeral=True
+            embed = discord.Embed(
+                description=f"✅ تم تغيير اسمك المستعار بنجاح إلى: **{new_nick}**",
+                color=0x00ff00
             )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            
+        except discord.Forbidden:
+            # تحدث هذه المشكلة إذا كان المستخدم صاحب رتبة أعلى من البوت أو هو "الأونر"
+            await interaction.response.send_message("❌ لا يمكنني تغيير اسمك لأن رتبتك أعلى مني أو أنك صاحب السيرفر.", ephemeral=True)
         except Exception as e:
-            await interaction.response.send_message(f"⚠️ حدث خطأ غير متوقع: {e}", ephemeral=True)
+            await interaction.response.send_message(f"❌ حدث خطأ غير متوقع: {e}", ephemeral=True)
 
 async def setup(bot):
-    await bot.add_cog(NicknameCog(bot))
+    await bot.add_cog(NickmeCog(bot))
