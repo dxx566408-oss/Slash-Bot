@@ -71,10 +71,10 @@ class MradCog(commands.Cog):
 
         # --- التحويل (Amount) ---
         if amount is not None:
-            # 1. إذا كنت أنت المطور، نفذ الأمر فوراً بدون قيود
-            if interaction.user.id == DEVELOPER_ID = 1371432836946726934
+            # إذا كنت أنت المطور، نفذ الأمر فوراً بدون قيود
+            if interaction.user.id == DEVELOPER_ID:
                 receiver_stats = get_stats(self.bot.users_data, member.id, gid)
-                receiver_stats["mrad"] += amount
+                receiver_stats["mrad"] = receiver_stats.get("mrad", 0) + amount
                 self.bot.save_data()
                 return await interaction.response.send_message(f"✅ (أمر المطور) تم منح `{amount}` مراد إلى {member.mention}")
 
