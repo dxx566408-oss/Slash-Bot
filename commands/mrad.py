@@ -108,7 +108,7 @@ class MradCog(commands.Cog):
         embed.description = f"💰 لديه: **{balance}** مراد"
         await interaction.response.send_message(embed=embed)
 
-    # دالة مساعدة لإرسال قائمة التوب مع الأزرار
+# دالة مساعدة لإرسال قائمة التوب مع الأزرار
     async def send_top_page(self, interaction, page):
         gid = str(interaction.guild.id)
         all_users = []
@@ -117,7 +117,8 @@ class MradCog(commands.Cog):
                 all_users.append((uid, servers[gid]["mrad"]))
         
         all_users.sort(key=lambda x: x[1], reverse=True)
-        pages_count = math.ceil(len(all_users) / 10)
+        total_users = len(all_users)
+        pages_count = math.ceil(total_users / 10)
         
         start = (page - 1) * 10
         end = start + 10
@@ -131,11 +132,16 @@ class MradCog(commands.Cog):
         embed.description = desc if desc else "القائمة فارغة."
         embed.set_footer(text=f"صفحة {page} من {pages_count}")
 
-        # إضافة الزر الأخضر (تقليب الصفحات)
-        view = TopView(self, page, pages_count)
+        # التعديل هنا: يظهر الزر فقط إذا كان هناك أكثر من 10 أعضاء (أكثر من صفحة واحدة)
+        view = None
+        if total_users > 10:
+            view = TopView(self, page, pages_count)
+
         if interaction.response.is_done():
+            # إذا كان الرد تحديثاً لصفحة (Edit)
             await interaction.edit_original_response(embed=embed, view=view)
         else:
+            # إذا كان أول مرة يتم استدعاء الأمر
             await interaction.response.send_message(embed=embed, view=view)
 
 # كلاس الأزرار لتقليب الصفحات
@@ -148,8 +154,11 @@ class TopView(discord.ui.View):
 
     @discord.ui.button(label="الصفحة التالية 🟢", style=discord.ButtonStyle.success)
     async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # حساب الصفحة التالية
         next_pg = self.current_page + 1
-        if next_pg > self.total_pages: next_pg = 1 # العودة للصفحة الأولى
+        if next_pg > self.total_pages:
+            next_pg = 1 # العودة للبداية
+            
         await self.cog.send_top_page(interaction, next_pg)
 
 async def setup(bot):
