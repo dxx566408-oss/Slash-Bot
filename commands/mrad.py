@@ -10,18 +10,22 @@ class MradCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="mrad", description="نظام عملة مراد: عرض الرصيد، التحويل، أو المتصدرين")
-    @app_commands.describe(
-        member="العضو المراد رؤية رصيده أو التحويل له",
-        amount="المبلغ المراد تحويله (اتركه فارغاً لرؤية الرصيد فقط)",
-        top="عرض قائمة أغنى 10 أعضاء في السيرفر",
-        rank="عرض من يحتل مركزاً معيناً (مثلاً: 7)"
-    )
-    async def mrad(self, interaction: discord.Interaction, 
-                   member: discord.Member = None, 
-                   amount: int = None, 
-                   top: bool = False, 
-                   rank: int = None):
+    # ✅ هذا هو الهيكل الجديد المنظم
+    mrad_group = app_commands.Group(name="mrad", description="نظام عملة مراد الكامل")
+
+    # --- الأمر الفرعي الأول: للرصيد والتحويل ---
+    @mrad_group.command(name="balance", description="عرض الرصيد أو التحويل لعضو")
+    @app_commands.describe(member="العضو", amount="المبلغ للتحويل")
+    async def balance(self, interaction: discord.Interaction, member: discord.Member = None, amount: int = None):
+        # هنا تضع كود (الرصيد + التحويل) الذي برمجناه سابقاً
+        pass
+
+    # --- الأمر الفرعي الثاني: للمتصدرين ---
+    @mrad_group.command(name="top", description="عرض قائمة الأغنياء")
+    @app_commands.describe(rank="عرض مركز معين")
+    async def top(self, interaction: discord.Interaction, rank: int = None):
+        # هنا تضع كود (التوب + الرانك) الذي برمجناه سابقاً
+        pass
         
         settings = load_settings()
         if not settings.get("mrad", {}).get("enabled", True):
