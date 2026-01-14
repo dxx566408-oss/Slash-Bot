@@ -106,16 +106,13 @@ async def on_voice_state_update(member, before, after):
         if member.id in bot.voice_times:
             duration = int(time.time() - bot.voice_times.pop(member.id))
             stats = get_stats(bot.users_data, uid, gid)
+            
+            # السطر القديم
             stats["voice_seconds"] += duration 
             
-            # لفل أب صوتي (كل 5 دقائق = 1 XP)
-            # نستخدم عملية القسمة لمعرفة كم XP يستحق دون المساس بالثواني الكلية
-            total_earned_xp = stats["voice_seconds"] // 300
-            if total_earned_xp > (stats["level"] * 5): # معادلة بسيطة للتطوير
-                stats["xp"] += 1
-                if stats["xp"] >= 20:
-                    stats["level"] += 1
-                    stats["xp"] = 0
+            # السطر الجديد المطلوب (تراكم الثواني)
+            stats["vs"] = stats.get("vs", 0) + duration 
+            
             bot.save_data()
 
 # --- التشغيل السحابي ---
